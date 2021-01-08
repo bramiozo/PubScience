@@ -1,0 +1,7 @@
+abstract_txt_folder: abstractdump
+article_txt_folder: articledump
+pdf_dump_folder: pdfdump
+xml_dump_folder:  xmldump
+max_articles: 1000
+arxiv_source: /media/bramiozo/DATA-FAST/text_data/pubscience/arxiv/arxiv-metadata-oai-snapshot.json
+root_folder: /media/bramiozo/DATA-FAST/text_data/pubscience
