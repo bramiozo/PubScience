@@ -7,5 +7,5 @@ while read p; do
 	done
 	filename=${filename#"_"}
 	echo $p
-	echo "|" | esearch -db pmc -query "\"$p\"" | efetch -format xml > $root_folder/$xml_dump_folder/full_$filename.xml
-done < searchterms5.txt
+	echo "|" | esearch -db pmc -query "\"$p\"" | efetch -start 0 -stop 1000 -format xml > $root_folder/pubmed/$xml_dump_folder/full_$filename.xml
+done < searchterms.txt

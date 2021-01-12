@@ -33,7 +33,7 @@ for _el in tqdm(arxiv_list):
         if search_key in _abstract:
             cnt += 1
             time.sleep(2)
-            logger.warning(f"Writing {id} to disk")
+            logger.warning(f"Writing {_id} to disk")
             url = f'http://arxiv.org/pdf/{_id}'
             r = requests.get(url, stream=True)
     
