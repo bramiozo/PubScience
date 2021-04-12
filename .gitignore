@@ -1,0 +1,7 @@
+*.dat
+*.csv
+*.feather
+*.parquet
+*.db
+*.sqllite
+

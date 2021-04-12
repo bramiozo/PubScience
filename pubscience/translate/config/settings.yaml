@@ -1,0 +1,16 @@
+cleaning:
+  min_sentence_character_length: 15
+  max_sentence_length: 128
+  sentence_delim: '[.:]'
+  remove_characters: '[^-.,:\sA-z0-9]+'
+  replace_characters: 
+    1: ['[0-9]{3,}', '###']
+    2: ['[0-9]{2}', '##']
+    3: ['[0-9]', '#']
+    4: ['\s{2,}', ' ']
+  write_mode: w
+translation:
+  source_lang: en
+  dest_lang: nl
+  method: gapi
+

@@ -4,7 +4,13 @@ import sys
 import re
 import gc
 from tqdm import tqdm
+import argparse
 
+# TODO: add --folder and --filename argument
+# TODO: if --folder, loop through folder for .xml's
+# TODO: use --folder/out/[filename].raw.txt or as output location unless specified otherwise with --outfolder
+# TODO: use [root] of filename for [root]/out/[filename].raw.txt as output location if 
+#       --folder and --outfolder not given 
 filename = sys.argv[1]
 rawout = filename+".abstract.raw"
 

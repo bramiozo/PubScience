@@ -22,6 +22,9 @@ try:
 except:
     num_res = 100
 max_res = 1000
+
+logger.warning(f'Max results: {num_res}')
+
 rawout = "abstractdump/"+query+".abstract.raw"
 
 
@@ -30,7 +33,7 @@ num_iter = math.ceil(num_res/max_res)
 
 art_idx = []
 chunk_res = min(num_res, max_res)
-for i in range(num_iter):
+for i in tqdm(range(num_iter)):
     start = i*max_res
     url = f'http://export.arxiv.org/api/query?search_query={query}&start={start}&max_results={chunk_res}'
     newline_re = re.compile(r'[\r\n]')
