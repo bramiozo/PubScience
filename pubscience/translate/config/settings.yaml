@@ -12,5 +12,5 @@ cleaning:
 translation:
   source_lang: en
   dest_lang: nl
-  method: gapi
+  method: public
 
