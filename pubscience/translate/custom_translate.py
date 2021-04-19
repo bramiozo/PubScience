@@ -76,9 +76,16 @@ class Translate():
         batch = deque(['' for i range(self.batch_size)], maxlen=self.batch_size)
         with open(self.input_loc, 'r') as reader:
             for cdx, line in enumerate(reader.readlines()):
-                batch.appendleft(line)
+                batch.appendleft(line.encode('utf-8'))
                 if (cdx+1)%batch_size==0:
                     yield "\n".join(batch)
+    
+    def _make_glossary():
+        '''Create glossary file in cloud that is accessible for project, based on .csv input.
+        '''
+
+
+
 
     def translate(self):
         with open(self.output_loc, self.write_mode) as w:
