@@ -3,6 +3,7 @@ import re
 import sys
 import argparse
 from benedict import benedict
+from beautifulsoup import Beautifulsoup
 
 '''
 Takes raw data in from:
