@@ -1,9 +1,11 @@
 import argparse
 import re
+import os
 import sys
 import argparse
 from benedict import benedict
 from beautifulsoup import Beautifulsoup
+import mimetypes
 
 '''
 Takes raw data in from:
@@ -25,7 +27,7 @@ class Cleaner():
                 input_loc=None,
                 output_loc="corpus_cleaned.dat"):
         '''
-        input_format : str, input format (csv/xml/txt)
+        input_format : str, input format (tsv/csv/xml/txt)
         output_tabular : boolean, output as table
         sep : str, separator
         sectionize : boolean, process only text sections
@@ -63,7 +65,10 @@ class Cleaner():
         return open(self.output_loc, self.clean_params['write_mode'])           
             
     def _reader(self):
-        # TODO: check if self.input_loc is a file
+        # TODO: check if self.input_loc is a text file
+        assert(os.path.isfile(self.input_loc)), "Input file-location does not seem to refer to an actual file"
+        assert(mimetypes.guess_type(self.input_loc) in self.accepted_files), f"The file is present but does not seem to be the correct type:"+mimetypes.guess_type(self.input_loc)
+
         with open(self.input_loc, 'r') as reader:
             for line in reader.readlines():
                 yield line
