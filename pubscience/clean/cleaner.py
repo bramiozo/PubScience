@@ -9,7 +9,7 @@ import mimetypes
 
 '''
 Takes raw data in from:
-raw PubMed/PMC, MIMICIII in tabular format, raw text or xml.
+raw PubMed/PMC, MIMICIII in tabular format, raw text or xml. --> CHOOSE MOTHERF*CKER!
 
 Outputs:
 a. Cleaned, text-only corpus without tables/lists, per line of some maximum length.
@@ -100,7 +100,7 @@ if __name__ == '__main__':
     parser.add_argument('--out', dest='output_location', help='Absolute output-file location', type=str)
     parser.add_argument('--config', dest='config_location', help='Absolute config-file location', 
                         type=str, default='config/settings.yaml')
-    parser.add_argument('--schema', dest='output_location', help='Cleaning settings', type=str)
+    parser.add_argument('--schema', dest='clean_schema', help='Cleaning settings', type=str)
 
     args = parser.parse_args()
 

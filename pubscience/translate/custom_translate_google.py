@@ -51,7 +51,7 @@ class Translate():
                         glossary_config = self.translate_client.TranslateTextGlossaryConfig(glossary=self.glos_loc)
 
 
-    def translate_text_google(txt):
+    def translate_text_google(self,txt):
         """Translates text into the target language.
 
         Target must be an ISO 639-1 language code.
@@ -62,8 +62,8 @@ class Translate():
             * https://cloud.google.com/translate/docs/advanced/glossary
             * https://cloud.google.com/translate/docs/samples/translate-v3-create-glossary
         """
-        if isinstance(text, six.binary_type):
-            text = text.decode("utf-8")
+        if isinstance(txt, six.binary_type):
+            text = txt.decode("utf-8")
         result = self.translate_client.translate(txt, target_language_code='nl', source_language_code='en')
         return result['translatedText']
 
