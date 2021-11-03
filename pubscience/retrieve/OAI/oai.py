@@ -5,6 +5,13 @@ import xml
 
 YYYY="2010"
 sources = {
+    'Narcis': {'link': f'https://oai.narcis.nl/oai?verb=ListRecords&metadataPrefix=oai_dc&set=publication&from={YYYYMMDD}&until={YYYYMMDD}',
+               'pdf': ['dc:relationship', 'dc:identifier'], 
+               'lang': 'dc:language',
+               'date': 'dc:date',
+               'type': 'dc:type',
+               'resumptionToken': 'resumptionToken'
+    },
     'Tilburg': {'link': f'https://pure.uvt.nl/ws/oai?metadataPrefix=oai_dc&verb=ListRecords&set=publications:year{YYYY}:withFiles', 
                 'pdf': 'identifier',
                 'follow': 'direct',
