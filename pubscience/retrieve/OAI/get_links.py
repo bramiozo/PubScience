@@ -10,3 +10,6 @@
     #  until resumptionToken is not present
     #  execute as :
     #    https://oai.narcis.nl/oai?verb=ListRecords&resumptionToken=XXXX
+    
+import oai
+
