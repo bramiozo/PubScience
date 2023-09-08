@@ -4,8 +4,10 @@ import os
 import sys
 import argparse
 from benedict import benedict
-from beautifulsoup import Beautifulsoup
+from bs4 import BeautifulSoup
+from tqdm import tqdm
 import mimetypes
+import io
 
 '''
 Takes raw data in from:
@@ -16,6 +18,13 @@ a. Cleaned, text-only corpus without tables/lists, per line of some maximum leng
 b. ditto but per document in tabular format with identifiers/labels, if available
 '''
 
+encoding_fixes = [('Ã«', 'ë'),
+                  ('Ã¯', 'ï'),
+                  ('Ã¨', 'è'),
+                  ('Ã©', 'é'),
+                  ('Ã¶', 'ö')]
+              
+
 class Cleaner():
     def __init__(self, 
                 input_format='csv', 
@@ -25,7 +34,8 @@ class Cleaner():
                 clean_schema='mimic', 
                 config_loc='config/settings.yaml',
                 input_loc=None,
-                output_loc="corpus_cleaned.dat"):
+                output_loc="../assets/corpus_cleaned.dat",
+                terms_required=None):
         '''
         input_format : str, input format (tsv/csv/xml/txt)
         output_tabular : boolean, output as table
@@ -37,42 +47,72 @@ class Cleaner():
          and https://allenai.github.io/scispacy/
         '''
         self.output_tabular = output_tabular
-        self.input_format = 'csv' 
+        self.input_format = 'csv'
         self.tabular_separator = sep
         self.sectionize = sectionize
         self.clean_schema = clean_schema
         self.input_loc = input_loc
-        self.output_loc = output_loc       
+        self.output_loc = output_loc
+        self.terms_required = terms_required
+        self.accepted_files = ['text/plain', 'text/csv', 'text/tab-separated-values', 'text/jsonl']
 
         assert isinstance(input_loc, str), f'input_loc should be a non-empty string'
         assert isinstance(config_loc, str), f'config_loc should be a non-empty string'
         assert isinstance(output_loc, str), f'output_loc should be a non-empty string'
+        assert (terms_required is None) | isinstance(terms_required, list), f'terms_required should be None, or a list of strings'
+        if terms_required is not None:
+            if len(terms_required)==0:
+                self.terms_required = None
 
-        params = benedict(config_loc, format='yaml')
-        self.clean_params = params['cleaning']
+        self.params = benedict(config_loc, format='yaml')
+        self.clean_params = self.params['cleaning']
         self.re_delimited = re.compile(r''+self.clean_params['sentence_delim'])
-        self.re_remove = re.compile(r''+self.clean_params['remove_characters'])
-        self.re_replacement = [(re.compile(r''+v[0]), v[1]) for v in self.clean_params['replace_characters'].values()]
+        self.re_replacement = [(re.compile(r''+v[0]), v[1]) for v in self.clean_params['replace_characters']]
         self.sentence = ""
 
     def _clean(self, txt):
-        txt = self.re_remove.sub('', txt)
+        for r in encoding_fixes:
+            txt = txt.replace(r[0], r[1])
         for r in self.re_replacement:
             txt = r[0].sub(r[1], txt)
         return txt
 
     def _writer(self):
-        return open(self.output_loc, self.clean_params['write_mode'])           
+        return open(self.output_loc, 
+                    self.params['out']['write_mode'], 
+                    encoding=self.params['out']['encoding'])       
             
     def _reader(self):
-        # TODO: check if self.input_loc is a text file
         assert(os.path.isfile(self.input_loc)), "Input file-location does not seem to refer to an actual file"
-        assert(mimetypes.guess_type(self.input_loc) in self.accepted_files), f"The file is present but does not seem to be the correct type:"+mimetypes.guess_type(self.input_loc)
+        assert(mimetypes.guess_type(self.input_loc)[0] in self.accepted_files), f"The file is present but does not seem to be the correct type:"+mimetypes.guess_type(self.input_loc)
 
-        with open(self.input_loc, 'r') as reader:
+        with open(self.input_loc, 'r', encoding=self.params['out']['encoding']) as reader:
             for line in reader.readlines():
-                yield line
-
+                if self.terms_required is not None:
+                    if not any([term in line for term in self.terms_required]):
+                        pass
+                else:
+                    yield line
+    
+    def _reader_buffered(self):
+        assert(os.path.isfile(self.input_loc)), "Input file-location does not seem to refer to an actual file"
+        assert(mimetypes.guess_type(self.input_loc)[0] in self.accepted_files), f"The file is present but does not seem to be the correct type:"+mimetypes.guess_type(self.input_loc)
+        
+        with open(self.input_loc, 'r', encoding=self.params['out']['encoding']) as reader:
+            f_id = io.FileIO(reader.fileno(), mode='r')
+            f_buf = io.BufferedReader(f_id)
+            while True:
+                line = f_buf.readline().decode(self.params['out']['encoding'])
+                if not line:
+                    break
+                if self.terms_required is not None:
+                    if not any([term in line for term in self.terms_required]):
+                        pass
+                    else:
+                        yield line
+                else:
+                    yield line
+            
     def _sentencer(self, txt):
         '''
             collect whole sentences (sequence of tokens bounded by separators)
@@ -83,10 +123,12 @@ class Cleaner():
             return True
 
     def clean(self):
-        reader = self._reader
+        assert(self.input_loc is not None), "Input file-location is not set, please set it first"
+        
+        reader = self._reader_buffered()
         writer = self._writer()
 
-        for l in reader():
+        for l in tqdm(reader):
             lp = self._clean(l)
             if len(lp)<self.clean_params['min_sentence_character_length']:
                 continue 
