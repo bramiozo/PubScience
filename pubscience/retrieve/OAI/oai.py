@@ -2,13 +2,7 @@ import requests
 import re
 import xml
 
-
-YYYY="2010"
-
-def source_dict(YYYY="2010", fromDate=None, untilData=None):
-  # fromDate/untilDate : this format 2019-01-01T00:00:00Z
-
-  sources = {
+sources = {
       'Tilburg': {'link': f'https://pure.uvt.nl/ws/oai?metadataPrefix=oai_dc', 
                   'pdf': 'identifier',
                   'follow': 'direct',
@@ -36,13 +30,13 @@ def source_dict(YYYY="2010", fromDate=None, untilData=None):
               'date': 'date', 
               'type': 'type'
               },
-      'Maastricht':{'link': f'https://cris.maastrichtuniversity.nl/ws/oai?&metadataPrefix=oai_dc', 
+      'Maastricht':{'link': f'https://cris.maastrichtuniversity.nl/ws/oai', # ?&metadataPrefix=oai_dc', 
                   'pdf': 'identifier',
                   'follow': 'direct',
                   'lang': 'language', 
                   'date': 'date', 
                   'type': 'type'},
-      'UVA': {'link': f'https://dare.uva.nl/oai?metadataPrefix=oai_dc', 
+      'UVA': {'link': f'https://pure.uva.nl/ws/oai', #https://dare.uva.nl/oai?metadataPrefix=oai_dc', 
                   'pdf': 'identifier',
                   'follow': 'direct',
                   'lang': 'language', 
@@ -60,7 +54,7 @@ def source_dict(YYYY="2010", fromDate=None, untilData=None):
                   'language': 'dc:language',
                   'type': 'dc:type'
               },
-      'VU': {'link': f'https://research.vu.nl/ws/oai?metadataPrefix=oai_dc',
+      'VU': {'link': f'https://research.vu.nl/ws/oai',
             'pdf': 'identifier',
             'follow': 'direct',
             'lang': 'language'
