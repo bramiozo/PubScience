@@ -3,27 +3,27 @@ import re
 import xml
 
 sources = {
-      'Tilburg': {'link': f'https://pure.uvt.nl/ws/oai?metadataPrefix=oai_dc', 
+      'Tilburg': {'link': f'https://pure.uvt.nl/ws/oai', #?metadataPrefix=oai_dc', 
                   'pdf': 'identifier',
                   'follow': 'direct',
                   'lang': 'language', 
                   'date': 'date', 
                   'type': 'type'},
-      'TUE': {'link': f'https://pure.uvt.nl/ws/oai?metadataPrefix=oai_dc', 
+      'TUE': {'link': f'https://pure.tue.nl/ws/oai', # ?metadataPrefix=oai_dc', 
                   'pdf': 'identifier',
                   'follow': 'direct',
                   'lang': 'language', 
                   'date': 'date', 
                   'subject': 'subject',
                   'type': 'type'},
-      'UTwente':{'link': f'https://ris.utwente.nl/ws/oai?metadataPrefix=oai_dc',
+      'UTwente':{'link': f'https://ris.utwente.nl/ws/oai', #?metadataPrefix=oai_dc',
                 'pdf': 'identifier',
                 'follow': 'direct',
                 'lang': 'language',
                 'date': 'date',
                 'subject': 'subject',
                 'type': 'type'},
-      'RUG': {'link': f'https://pure.rug.nl/ws/oai?metadataPrefix=oai_dc',
+      'RUG': {'link': f'https://pure.rug.nl/ws/oai', #?metadataPrefix=oai_dc',
               'pdf': 'identifier',
               'follow': 'direct',
               'lang': 'language',
@@ -42,7 +42,7 @@ sources = {
                   'lang': 'language', 
                   'date': 'date', 
                   'type': 'type'},
-      'UMCU': {'link': 'http://dspace.library.uu.nl/oai/dissertation',
+      'UU': {'link': 'http://dspace.library.uu.nl/oai/dissertation', #/dissertation', #/openaire
                   'pdf': 'dc:identifier',
                   'follow': 'retrieve',
                   'language': 'dc:language',
@@ -72,6 +72,6 @@ sources = {
                 'sets': ['col_2066_119645', 'col_2066_119636', 'col_2066_69015']
               },
       'KNAW': {},
-      'Erasmus':{},
+      'Erasmus':{'link': 'https://pure.eur.nl/ws/oai'},
       'TUDelft':{}
   }
