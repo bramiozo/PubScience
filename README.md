@@ -3,8 +3,9 @@ Repository for public-article extraction and mining.
 
 Three components:
 1. **Retrieve** text data from Arxiv/Biorxiv/Medrxiv or Pubmed/PMC
-2. **Clean** the XML/JSON/.. etc. from the previous step and output cleaned text
-3. **Translate** the cleaned text to Dutch
+2. **Identify** relevant text from generic corpora
+3. **Clean** the XML/JSON/.. etc. from the previous step and output cleaned text
+4. **Translate** the pruned/cleaned text to Dutch
 
 Tools
 https://camelot-py.readthedocs.io/en/master/
@@ -17,14 +18,26 @@ scrapy
 
 Use the API's to pull .pdf's, .xml's or .json's.
 
+# Identify 
+
+Based on 
+* relevant document embedders (bi-encoders/cross-encoders) or
+* topic models, or
+* supervised models, trained to distinguish between domain specific texts and generic/other texts
+
 # Clean
 
 Fix broken XML/JSON, and select text-sections using Beautifulsoup and other Python libraries, clean for non-word characters.
 
 # Translate 
 
-Use Bulk google Translate/DeepL or open source translation models in combination with UMLS-based glossaries to translate the
-cleaned text to Dutch.
+Use Bulk google Translate/DeepL/LLM's(GPT4/Gemini/etc) or open source translation models in combination with UMLS-based glossaries to translate the
+cleaned text to Dutch. 
+
+Key features:
+* A domain specific glossary, and related,
+* a domain specific vocabulary.
+* A ```cache``` functionality to reduce translation cost, i.e. a dynamically programmed wrapper
 
 
 Text extraction pipelines:
