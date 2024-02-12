@@ -42,6 +42,8 @@ Key features:
 * a domain specific vocabulary.
 * A ```cache``` functionality to reduce translation cost, i.e. a dynamically programmed wrapper
 
+# Share
+
 
 Text extraction pipelines:
 * download pdf, extract body text, translate, clean, store
