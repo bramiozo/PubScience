@@ -6,6 +6,7 @@ Three components:
 2. **Identify** relevant text from generic corpora
 3. **Clean** the XML/JSON/.. etc. from the previous step and output cleaned text
 4. **Translate** the pruned/cleaned text to Dutch
+5. **Share** make shareable through e.g. Huggingface
 
 Tools
 https://camelot-py.readthedocs.io/en/master/
@@ -16,7 +17,9 @@ scrapy
 
 # Retrieve 
 
-Use the API's to pull .pdf's, .xml's or .json's.
+* Use the API's to pull .pdf's, .xml's or .json's.
+* Pull directly from ```http``` of ```ftp```.
+* Parse from local files (parquet/csv.gzip).
 
 # Identify 
 
@@ -27,7 +30,7 @@ Based on
 
 # Clean
 
-Fix broken XML/JSON, and select text-sections using Beautifulsoup and other Python libraries, clean for non-word characters.
+Fix broken XML/JSON, and select text-sections using Beautifulsoup and other Python libraries, clean for non-word characters and e.g. formatting spans.
 
 # Translate 
 
