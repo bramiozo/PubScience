@@ -24,6 +24,7 @@ scrapy
 # Identify 
 
 Based on 
+* keyword lookup, using e.g. [FlashText](https://arxiv.org/abs/1711.00046)
 * relevant document embedders (bi-encoders/cross-encoders) or
 * topic models, or
 * supervised models, trained to distinguish between domain specific texts and generic/other texts
