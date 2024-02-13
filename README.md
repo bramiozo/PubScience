@@ -72,7 +72,7 @@ As part of Dutch generic corpora
 * [Gigacorpus](http://gigacorpus.nl/). Raw: **234GB**
 * [MADLAD-400](https://huggingface.co/datasets/allenai/MADLAD-400), see [paper](https://arxiv.org/abs/2309.04662). Raw: **118.2GB**
 
-As part of English corpora that we can translate
+As part of English corpora that we can filter, clean, then translate
 * MIMIC III. **3.4GB**
 * MIMIC III CXR: **0.421GB**
 * MIMIC IV: **2GB**
