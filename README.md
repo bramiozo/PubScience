@@ -5,8 +5,9 @@ Three components:
 1. **Retrieve** text data from Arxiv/Biorxiv/Medrxiv or Pubmed/PMC
 2. **Identify** relevant text from generic corpora
 3. **Clean** the XML/JSON/.. etc. from the previous step and output cleaned text
-4. **Translate** the pruned/cleaned text to Dutch
-5. **Share** make shareable through e.g. Huggingface
+4. **Deduplicate**
+5. **Translate** the pruned/cleaned text to Dutch
+6. **Share** make shareable through e.g. Huggingface
 
 Tools
 https://camelot-py.readthedocs.io/en/master/
@@ -15,13 +16,13 @@ https://pypi.org/project/pdftotext/
 beautifulsoup
 scrapy
 
-# Retrieve 
+## Retrieve 
 
 * Use the API's to pull .pdf's, .xml's or .json's.
 * Pull directly from ```http``` of ```ftp```.
 * Parse from local files (parquet/csv.gzip).
 
-# Identify 
+## Identify 
 
 Based on 
 * keyword lookup, using e.g. [FlashText](https://arxiv.org/abs/1711.00046)
@@ -29,11 +30,13 @@ Based on
 * topic models, or
 * supervised models, trained to distinguish between domain specific texts and generic/other texts
 
-# Clean
+## Clean
 
 Fix broken XML/JSON, and select text-sections using Beautifulsoup and other Python libraries, clean for non-word characters and e.g. formatting spans.
 
-# Translate 
+## Deduplicate
+
+## Translate 
 
 Use Bulk google Translate/DeepL/LLM's(GPT4/Gemini/etc) or open source translation models in combination with UMLS-based glossaries to translate the
 cleaned text to Dutch. 
@@ -43,10 +46,29 @@ Key features:
 * a domain specific vocabulary.
 * A ```cache``` functionality to reduce translation cost, i.e. a dynamically programmed wrapper
 
-# Share
+## Share
 
 
 Text extraction pipelines:
 * download pdf, extract body text, translate, clean, store
 * download XML, fix broken XML, extract body text, translate, clean, store
 * download pdf, extract Dutch section, clean, store
+
+# Source
+
+## Dutch
+
+As part of multi-lingual corpora
+* [Aya collection](https://huggingface.co/datasets/CohereForAI/aya_collection)
+
+
+As part of Dutch generic corpora
+* SoNaR. Raw: $~$ **5GB**
+* OSCAR. Raw: **41.5GB**
+* COW14. Raw: **5.3GB**
+* TnwC: ask permission to share with AMC. Raw: **3.1GB**
+* CC100. Raw: **31.5GB**
+* [mC4](https://huggingface.co/datasets/yhavinga/mc4_nl_cleaned). Raw: **151GB**
+* [Gigacorpus](http://gigacorpus.nl/). Raw: **234GB**
+* [MADLAD-400](https://huggingface.co/datasets/allenai/MADLAD-400), see [paper](https://arxiv.org/abs/2309.04662). Raw: **118.2GB**
+
