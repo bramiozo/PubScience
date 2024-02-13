@@ -54,7 +54,7 @@ Text extraction pipelines:
 * download XML, fix broken XML, extract body text, translate, clean, store
 * download pdf, extract Dutch section, clean, store
 
-# Source
+# Sources
 
 ## Dutch
 
