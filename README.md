@@ -72,3 +72,20 @@ As part of Dutch generic corpora
 * [Gigacorpus](http://gigacorpus.nl/). Raw: **234GB**
 * [MADLAD-400](https://huggingface.co/datasets/allenai/MADLAD-400), see [paper](https://arxiv.org/abs/2309.04662). Raw: **118.2GB**
 
+As part of English corpora that we can translate
+* MIMIC III. **3.4GB**
+* MIMIC III CXR: **0.421GB**
+* MIMIC IV: **2GB**
+* eICU: **0.32GB**
+* [PMC OA COMM](https://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_bulk/oa_comm/txt/):  **54GB** compressed,  **150GB** uncompressed
+* [PMC OA NON COMM](https://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_bulk/oa_noncomm/txt/): **16GB** compressed,  **50GB** uncompressed, PMC OA represent more than _3M_ articles
+* [Pubmed abstracts](https://github.com/thoppe/The-Pile-PubMed?tab=readme-ov-file)
+* [S2ORC](https://github.com/allenai/s2orc): _81M_ abstracts, _8.1M_ fulltext, estimated **500GB**
+* [Biorxiv/Medrxiv](https://connect.biorxiv.org/news/2020/04/18/tdm), [also](https://github.com/BlueBrain/Search/issues/459): _0.22M_ fulltext documents, estimated **20GB** 
+* [Clinical guidelines](https://huggingface.co/datasets/epfl-llm/guidelines)
+* Medical PhD-theses
+
+As part of Dutch clinical texts
+* NtvG journals
+* Dutch medical protocols
+
