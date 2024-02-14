@@ -6,12 +6,12 @@
 # PubScience
 Repository for public-article extraction and mining.
 
-Three components:
+Multiple components:
 1. **Select** using API's to connect with 3rd party data
-1. **Retrieve** text data from Arxiv/Biorxiv/Medrxiv or Pubmed/PMC
-2. **Identify** relevant text from generic corpora
-3. **Clean** the XML/JSON/.. etc. from the previous step and output cleaned text
-5. **Deduplicate**
+2. **Retrieve** text data from Arxiv/Biorxiv/Medrxiv or Pubmed/PMC
+3. **Identify** relevant text from generic corpora
+4. **Deduplicate**
+5. **Clean** the XML/JSON/.. etc. from the previous step and output cleaned text
 6. **Translate** the pruned/cleaned text to Dutch
 7. **Anonymise** 
 8. **Share** make shareable through e.g. Huggingface
