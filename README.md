@@ -10,7 +10,7 @@ Three components:
 6. **Share** make shareable through e.g. Huggingface
 
  <p align="center">
-<img src="https://github.com/bramiozo/CUCE/blob/main/PubScience.png" alt="image" width="300" height="auto" >
+<img src="https://github.com/bramiozo/PubScience/blob/main/PubScience.png" alt="image" width="300" height="auto" >
  </p>
 
 
