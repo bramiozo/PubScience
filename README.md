@@ -1,13 +1,20 @@
+ <p align="center">
+<img src="https://github.com/bramiozo/PubScience/blob/main/PubScience.png" alt="image" width="300" height="auto" >
+ </p>
+<hr width=100%>
+ 
 # PubScience
 Repository for public-article extraction and mining.
 
 Three components:
+1. **Select** using API's to connect with 3rd party data
 1. **Retrieve** text data from Arxiv/Biorxiv/Medrxiv or Pubmed/PMC
 2. **Identify** relevant text from generic corpora
 3. **Clean** the XML/JSON/.. etc. from the previous step and output cleaned text
-4. **Deduplicate**
-5. **Translate** the pruned/cleaned text to Dutch
-6. **Share** make shareable through e.g. Huggingface
+5. **Deduplicate**
+6. **Translate** the pruned/cleaned text to Dutch
+7. **Anonymise** 
+8. **Share** make shareable through e.g. Huggingface
 
  <p align="center">
 <img src="https://github.com/bramiozo/PubScience/blob/main/PubScience.png" alt="image" width="300" height="auto" >
