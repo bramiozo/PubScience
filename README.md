@@ -9,6 +9,7 @@ Repository for public-article extraction and mining.
 Multiple components:
 * **Select** using API's to connect with 3rd party data
 * **Retrieve** text data from Arxiv/Biorxiv/Medrxiv or Pubmed/PMC
+* **Parse** process XML/JSON/HTML/PDF/CSV in lists of texts 
 * **Identify** relevant text from generic corpora
 * **Deduplicate**
 * **Clean** the XML/JSON/.. etc. from the previous step and output cleaned text
