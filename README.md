@@ -7,14 +7,14 @@
 Repository for public-article extraction and mining.
 
 Multiple components:
-1. **Select** using API's to connect with 3rd party data
-2. **Retrieve** text data from Arxiv/Biorxiv/Medrxiv or Pubmed/PMC
-3. **Identify** relevant text from generic corpora
-4. **Deduplicate**
-5. **Clean** the XML/JSON/.. etc. from the previous step and output cleaned text
-6. **Translate** the pruned/cleaned text to Dutch
-7. **Anonymise** 
-8. **Share** make shareable through e.g. Huggingface
+* **Select** using API's to connect with 3rd party data
+* **Retrieve** text data from Arxiv/Biorxiv/Medrxiv or Pubmed/PMC
+* **Identify** relevant text from generic corpora
+* **Deduplicate**
+* **Clean** the XML/JSON/.. etc. from the previous step and output cleaned text
+* **Translate** the pruned/cleaned text to Dutch
+* **Anonymise** 
+* **Share** make shareable through e.g. Huggingface
 
  <p align="center">
 <img src="https://github.com/bramiozo/PubScience/blob/main/PubScience.png" alt="image" width="300" height="auto" >
@@ -28,6 +28,8 @@ https://pdfminersix.readthedocs.io/en/latest/
 https://pypi.org/project/pdftotext/
 beautifulsoup
 scrapy
+
+## Select
 
 ## Retrieve 
 
@@ -43,11 +45,12 @@ Based on
 * topic models, or
 * supervised models, trained to distinguish between domain specific texts and generic/other texts
 
+## Deduplicate
+
 ## Clean
 
 Fix broken XML/JSON, and select text-sections using Beautifulsoup and other Python libraries, clean for non-word characters and e.g. formatting spans.
 
-## Deduplicate
 
 ## Translate 
 
@@ -58,6 +61,10 @@ Key features:
 * A domain specific glossary, and related,
 * a domain specific vocabulary.
 * A ```cache``` functionality to reduce translation cost, i.e. a dynamically programmed wrapper
+
+## Anonymise
+
+
 
 ## Share
 
