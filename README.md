@@ -1,5 +1,5 @@
  <p align="center">
-<img src="https://github.com/bramiozo/PubScience/blob/main/PubScience.png" alt="image" width="300" height="auto" >
+<img src="https://github.com/bramiozo/PubScience/blob/main/logo.webp" alt="image" width="300" height="auto" >
  </p>
 <hr width=100%>
  
