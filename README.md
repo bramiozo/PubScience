@@ -9,6 +9,12 @@ Three components:
 5. **Translate** the pruned/cleaned text to Dutch
 6. **Share** make shareable through e.g. Huggingface
 
+ <p align="center">
+<img src="https://github.com/bramiozo/CUCE/blob/main/PubScience.png" alt="image" width="300" height="auto" >
+ </p>
+
+
+
 Tools
 https://camelot-py.readthedocs.io/en/master/
 https://pdfminersix.readthedocs.io/en/latest/
