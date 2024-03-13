@@ -65,7 +65,7 @@ Key features:
 * Medical span alignment
 
  <p align="center">
-<img src="https://github.com/bramiozo/PubScience/blob/main/Aligned_translation.png" alt="image" width="300" height="auto" >
+<img src="https://github.com/bramiozo/PubScience/blob/main/Aligned_translation.png" alt="image" width="900" height="auto" >
  </p>
 
 When we translate annotated corpora we need to make sure that the labeled spans are correctly translated **and** spanned.
