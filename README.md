@@ -62,7 +62,12 @@ Key features:
 * A domain specific glossary, and related,
 * a domain specific vocabulary.
 * A ```cache``` functionality to reduce translation cost, i.e. a dynamically programmed wrapper
+* Span alignment
 
+ <p align="center">
+<img src="https://github.com/bramiozo/PubScience/blob/main/Aligned_translation.png" alt="image" width="300" height="auto" >
+ </p>
+ 
 ## Anonymise
 
 
