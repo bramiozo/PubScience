@@ -82,6 +82,8 @@ In principle we are able to create a training set with span-to-span information,
 We translate a text _as is_: ```the fox jumps over the fence``` -> ```de vos springt over het hek```, then we identify the spans in the translated sentence.
 One possible solution is to perform semantic similarity matching using multi-lingual (or at least bilingual) bi- or cross-encoders.
 
+A more lexical/syntactic approach is followed by [Soares and Krallinger](https://arxiv.org/pdf/1905.01712.pdf), who use the [Aligner](https://sourceforge.net/projects/aligner/) tool.
+
 ## Anonymise
 
 [DEDUCE](https://github.com/vmenger/deduce), [Presidio](https://github.com/microsoft/presidio)
