@@ -76,14 +76,14 @@ in the original text prior to translation. Even though this might, arguably, neg
 translated corpora showed similar accuracy to the model trained on the original English corpora. 
 
 ### Span-inference of translation
-In principle we are able to create a training set with span-to-span information, e.g. as part of existing collective translation efforts (such as [datatools4heart](https://www.datatools4heart.eu/).
+In principle we are able to create a training set with span-to-span information, e.g. as part of existing collective translation efforts (such as [datatools4heart](https://www.datatools4heart.eu/). 
 
 ### Translate-then-align
-We translation a text as is: ```the fox jumps over the fence```
+We translate a text _as is_: ```the fox jumps over the fence``` -> ```de vos springt over het hek```, then we identify the spans in the translated sentence.
 
 ## Anonymise
 
-
+[DEDUCE](https://github.com/vmenger/deduce), [Presidio](https://github.com/microsoft/presidio)
 
 ## Share
 
