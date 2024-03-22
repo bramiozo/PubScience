@@ -80,6 +80,7 @@ In principle we are able to create a training set with span-to-span information,
 
 ### Translate-then-align
 We translate a text _as is_: ```the fox jumps over the fence``` -> ```de vos springt over het hek```, then we identify the spans in the translated sentence.
+One possible solution is to perform semantic similarity matching using multi-lingual (or at least bilingual) bi- or cross-encoders.
 
 ## Anonymise
 
