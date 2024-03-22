@@ -68,8 +68,18 @@ Key features:
 <img src="https://github.com/bramiozo/PubScience/blob/main/Aligned_translation.png" alt="image" width="900" height="auto" >
  </p>
 
-When we translate annotated corpora we need to make sure that the labeled spans are correctly translated **and** spanned.
+When we translate _annotated corpora_ we need to make sure that the labeled spans are correctly translated **and** spanned.
+We identify three approaches: (1) span-preserving translation, (2) span-inference of translation, (3) translate-then-align
+### Span preserving translation
+An example approach is given by [Seinen et al.](https://github.com/mi-erasmusmc/DutchClinicalCorpora); Seinen et al inject the span-information directly
+in the original text prior to translation. Even though this might, arguably, negatively effect the translation quality the resulting models trained on the 
+translated corpora showed similar accuracy to the model trained on the original English corpora. 
 
+### Span-inference of translation
+In principle we are able to create a training set with span-to-span information, e.g. as part of existing collective translation efforts (such as [datatools4heart](https://www.datatools4heart.eu/).
+
+### Translate-then-align
+We translation a text as is: ```the fox jumps over the fence```
 
 ## Anonymise
 
@@ -100,6 +110,7 @@ As part of Dutch generic corpora
 * [mC4](https://huggingface.co/datasets/yhavinga/mc4_nl_cleaned). Raw: **151GB**
 * [Gigacorpus](http://gigacorpus.nl/). Raw: **234GB**
 * [MADLAD-400](https://huggingface.co/datasets/allenai/MADLAD-400), see [paper](https://arxiv.org/abs/2309.04662). Raw: **118.2GB**
+* [PleIAs, common corpus](https://huggingface.co/datasets/PleIAs/Dutch-PD). Raw: **180GB**
 
 As part of English corpora that we can filter, clean, then translate
 * MIMIC III. **3.4GB**
@@ -118,3 +129,6 @@ As part of Dutch clinical texts
 * NtvG journals
 * Dutch medical protocols
 
+## Translation of majority language sources
+
+In principle all the English corpora can be used given an appropriate translation method.
