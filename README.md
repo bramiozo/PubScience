@@ -127,6 +127,7 @@ As part of English corpora that we can filter, clean, then translate
 * [Biorxiv/Medrxiv](https://connect.biorxiv.org/news/2020/04/18/tdm), [also](https://github.com/BlueBrain/Search/issues/459): _0.22M_ fulltext documents, estimated **20GB** 
 * [Clinical guidelines](https://huggingface.co/datasets/epfl-llm/guidelines)
 * Medical PhD-theses
+* [Apollo corpora](https://huggingface.co/datasets/FreedomIntelligence/ApolloCorpus).
 
 As part of Dutch clinical texts
 * NtvG journals
