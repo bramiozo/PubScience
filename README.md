@@ -24,11 +24,12 @@ Multiple components:
 
 
 Tools
-https://camelot-py.readthedocs.io/en/master/
-https://pdfminersix.readthedocs.io/en/latest/
-https://pypi.org/project/pdftotext/
-beautifulsoup
-scrapy
+* [camelot](https://camelot-py.readthedocs.io/en/master/)
+* [pdfminer](https://pdfminersix.readthedocs.io/en/latest/)
+* [pdftotext](https://pypi.org/project/pdftotext/)
+* [fitz](https://github.com/pymupdf/PyMuPDF)
+* [beautifulsoup](https://www.crummy.com/software/BeautifulSoup/)
+* [scrapy](https://docs.scrapy.org/en/latest/)
 
 ## Select
 
