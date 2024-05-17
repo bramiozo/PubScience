@@ -31,6 +31,12 @@ Tools
 * [beautifulsoup](https://www.crummy.com/software/BeautifulSoup/)
 * [scrapy](https://docs.scrapy.org/en/latest/)
 
+Language:
+* [Blend](https://higherorderco.com/)
+* Julia
+* Mojo
+* PHP
+
 ## Select
 
 ## Retrieve 
