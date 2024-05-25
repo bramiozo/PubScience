@@ -32,10 +32,12 @@ Tools
 * [scrapy](https://docs.scrapy.org/en/latest/)
 
 Language:
-* [Blend](https://higherorderco.com/)
-* Julia
-* Mojo
-* PHP
+This is primarily interesting because large scale text-processing can in principle be parallelized in
+an embarassingly simple way, that means we should prefer natively heteregenous languages such as
+* [Bend (GPU/CPU)](https://higherorderco.com/)
+* [Julia (CPU)]()
+* [Mojo (CPU)]()
+
 
 ## Select
 
