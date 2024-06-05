@@ -171,9 +171,13 @@ As part of English corpora that we can filter, clean, then translate
 * Medical PhD-theses
 * [Apollo corpora](https://huggingface.co/datasets/FreedomIntelligence/ApolloCorpus).
 
+And in principle we are able to identify medical texts in non-Dutch generic corpora followed by a 
+translation.
+
 As part of Dutch clinical texts
 * NtvG journals
 * Dutch medical protocols
+* medical health records from participating medical centers.
 
 ## Translation of majority language sources
 
