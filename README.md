@@ -11,16 +11,49 @@ Multiple components:
 * **Retrieve** text data from Arxiv/Biorxiv/Medrxiv or Pubmed/PMC
 * **Parse** process XML/JSON/HTML/PDF/CSV in lists of texts 
 * **Identify** relevant text from generic corpora
-* **Deduplicate**
+* **Deduplicate** remove exact duplicates
 * **Clean** the XML/JSON/.. etc. from the previous step and output cleaned text
 * **Translate** the pruned/cleaned text to Dutch
-* **Anonymise** 
+* **Anonymise** replace PII-information by placeholder terms
 * **Share** make shareable through e.g. Huggingface
+* **Augment** Add paraphrasing
+
+**Status** (minimum working example):
+| Task          | In progress    | Completed  |
+|---------------|----------------|------------|
+| Select        |   [ ]          | [ ]        |
+| Retrieve      |   [ ]          | [ ]        |
+| Parse         |   [ ]          | [ ]        |
+| Identify      |   [ ]          | [ ]        |
+| Deduplicate   |   [x]          | [ ]        |
+| Clean         |   [x]          | [ ]        |
+| Translate     |   [ ]          | [ ]        |
+| Anonymise     |   [x]          | [ ]        |
+| Share         |   [ ]          | [ ]        |
+| Augment       |   [ ]          | [ ]        |
+
+
+Basic operation:
+```python
+
+from pubscience import clean, deduplicate, anonymise
+from pubscience.utils import Pipeline
+
+Cleaner = clean(**clean_kwargs)
+Deduplicate = deduplicate(**dedup_kwargs)
+Deid = anonymise(**deid_kwargs)
+
+TextPipe = Pipeline([('Cleaner', Cleaner), 
+                     ('Deduplicate',  Deduplicate), 
+                     ('Deid', Deid)], n_jobs=16)
+
+df['processed_text'] = TextPipe.fit_transform(df['raw_text'])
+```
+
 
  <p align="center">
 <img src="https://github.com/bramiozo/PubScience/blob/main/PubScience.png" alt="image" width="300" height="auto" >
  </p>
-
 
 
 Tools
