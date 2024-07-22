@@ -9,28 +9,60 @@ Repository for public-article extraction and mining.
 Multiple components:
 * **Select** using API's to connect with 3rd party data
 * **Retrieve** text data from Arxiv/Biorxiv/Medrxiv or Pubmed/PMC
-* **Parse** process XML/JSON/HTML/PDF/CSV in lists of texts 
+* **Parse** process ingress XML/JSON/HTML/PDF/CSV into desired format
 * **Identify** relevant text from generic corpora
-* **Deduplicate** remove exact duplicates
+* **Deduplicate** remove exact and mark approximate duplicates
 * **Clean** the XML/JSON/.. etc. from the previous step and output cleaned text
-* **Translate** the pruned/cleaned text to Dutch
-* **Anonymise** replace PII-information by placeholder terms
+* **Translate** the pruned/cleaned text to any target language
+* **Anonymize** replace PII-information by placeholder terms
 * **Share** make shareable through e.g. Huggingface
 * **Augment** Add paraphrasing
+* **Synonimize** identify and replace typos
+* **Deabbreviate** identify and deabbreviate abbreviations
+* **Stats** extract corpus statistics
 
 **Status** (minimum working example):
 | Task          | In progress    | Completed  |
 |---------------|----------------|------------|
-| Select        |   [ ]          | [ ]        |
-| Retrieve      |   [ ]          | [ ]        |
+| Select & Retrieve    |   [ ]   | [ ]        |
 | Parse         |   [ ]          | [ ]        |
 | Identify      |   [ ]          | [ ]        |
-| Deduplicate   |   [x]          | [ ]        |
+| Deduplicate   |   [ ]          | [ ]        |
 | Clean         |   [x]          | [ ]        |
 | Translate     |   [ ]          | [ ]        |
 | Anonymise     |   [x]          | [ ]        |
 | Share         |   [ ]          | [ ]        |
 | Augment       |   [ ]          | [ ]        |
+| Synonimize    |   [ ]          | [ ]        |
+| Deabbreviate  |   [ ]          | [ ]        |
+| Stats         |   [x]          | [ ]        |
+
+## Project descriptions
+Here we can a bit more detail on the projects.
+
+**Select & Retrieve**: interfaces with APIs for S2ORC/Pubmed/PMC/arxiv/medxriv/biorxiv/OAI
+
+**Parse**: parser to normalise incoming data in JSON/YAML or HuggingFace dataset formats
+
+**Identify**: functionality to identify medical texts in general corpora using supervised and self-supervised models
+
+**Deduplicate**: remove exact duplicates and mark approximate duplicates.
+
+**Clean**: remove noise, code/format artifacts, escape/remove quotes
+
+**Translate**: using NMT and translation APIs optionally in combination with glossaries translate corporate to a target language.
+
+**Anonymize**: replace PII-information by placeholder terms using deidentification libraries and optional custom patterns.
+
+**Share**: turn translated dataset into shared datasets including a dataset-card, license, etc.
+
+**Augment**:  code to use paraphrasing for text generation
+
+**Synonimize**: identify and replace typos, normalise variations of the same word
+
+**Deabbreviate**: identify and deabbreviate abbreviations to reduce the ambiguity
+
+**Stats**: extract stats from corpora, specifically; number of tokens, number of sentences, number of documents, vocab size
 
 
 Basic operation:
@@ -41,17 +73,21 @@ from pubscience.utils import Pipeline
 
 Cleaner = clean(**clean_kwargs)
 Deduplicate = deduplicate(**dedup_kwargs)
-Deid = anonymise(**deid_kwargs)
+Deid = anonymise(**deid_kwargs) 
+
 
 TextPipe = Pipeline([('Cleaner', Cleaner), 
                      ('Deduplicate',  Deduplicate), 
-                     ('Deid', Deid)], n_jobs=16)
+                     ('Deid', Deid)], 
+                    n_jobs=16)
 
-df['processed_text'] = TextPipe.fit_transform(df['raw_text'])
+df['processed_text'] = TextPipe.fit_transform(df['raw_text']) 
+
+# here Deduplicate adds a column to indicate the duplication degree
 ```
 
 
- <p align="center">
+ <p "center">
 <img src="https://github.com/bramiozo/PubScience/blob/main/PubScience.png" alt="image" width="300" height="auto" >
  </p>
 
@@ -178,6 +214,9 @@ As part of Dutch clinical texts
 * NtvG journals
 * Dutch medical protocols
 * medical health records from participating medical centers.
+
+## Spanish
+
 
 ## Translation of majority language sources
 
