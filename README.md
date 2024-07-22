@@ -124,6 +124,10 @@ Based on
 * topic models, or
 * supervised models, trained to distinguish between domain specific texts and generic/other texts
 
+A simple recipe could be (1) use command line string manipulation tools such as `grep`, `awk` and `cat` for the initial pruning
+so for instance `grep "cardiale\|hartziekte\|vasculair\|tachycardie\|hartritme\|angina pectoris\|vaatlijden"  nl_clean_0000.jsonl > nl_clean_cardiale.jsonl`,
+this is then followed by (2) a bi-encoder to check whether documents are 'near' medical texts or (3) a supervised model to identify medical texts.
+
 ## Deduplicate
 
 ## Clean
