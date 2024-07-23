@@ -46,6 +46,13 @@ Here we can a bit more detail on the projects.
 
 **Identify**: functionality to identify medical texts in general corpora using supervised and self-supervised models
 
+* Use pre-trained supervised models to identify relevant documents or text sections
+* Use LLMs to identify relevant texts using in-context-learning
+* Use seed-texts in combination with bi-encoder and cross-encoder models to find texts that are _near_
+
+The core function _ab initio_ is to ease the creation and dissemination of Dutch clinical NLP work (including corpora) but
+in principle this code is not limited to the Dutch language or the medical domain.
+
 **Deduplicate**: remove exact duplicates and mark approximate duplicates.
 Following the Llama3.1 recipe we use
 * MinHash (see [Broder](https://ieeexplore.ieee.org/document/666900))
@@ -55,6 +62,7 @@ Following the Llama3.1 recipe we use
 * duplicated n-gram coverage ratio (see [Rao et al.](https://arxiv.org/pdf/2112.11446)) to identify error logs
 * Encoding degarbling
 * file-format headers/endings
+* using fasttext-based language detectors remove text-sections that exceed a pre-set fraction being _other lingual_ based on a per-line basis. e.g. if >50% of the paragraph or document is non-English we remove that paragraph  
 
 The core function here is the extract the _text intended to be read_.
 
