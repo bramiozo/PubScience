@@ -47,8 +47,16 @@ Here we can a bit more detail on the projects.
 **Identify**: functionality to identify medical texts in general corpora using supervised and self-supervised models
 
 **Deduplicate**: remove exact duplicates and mark approximate duplicates.
+Following the Llama3.1 recipe we use
+* MinHash (see [Broder](https://ieeexplore.ieee.org/document/666900))
+* Line-level deduplication; line-level frequency determination with cut-off, and selective removal
 
 **Clean**: remove noise, code/format artifacts, escape/remove quotes
+* duplicated n-gram coverage ratio (see [Rao et al.](https://arxiv.org/pdf/2112.11446)) to identify error logs
+* Encoding degarbling
+* file-format headers/endings
+
+The core function here is the extract the _text intended to be read_.
 
 **Translate**: using NMT and translation APIs optionally in combination with glossaries translate corporate to a target language.
 
