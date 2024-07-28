@@ -156,6 +156,23 @@ Fix broken XML/JSON, and select text-sections using Beautifulsoup and other Pyth
 Use Bulk google Translate/DeepL/LLM's(GPT4/Gemini/etc) or open source translation models in combination with UMLS-based glossaries to translate the
 cleaned text to Dutch. 
 
+* External LLM APIs:
+  * Google Gemini
+  * OpenAI GPT4
+  * Anthropic Claude
+  * Groq (Llama, Mistral etc.)
+* External translation APIs:
+  * Google Translate
+  * DeepL
+* pre-trained NLMs (in principle all models that are availabe through Huggingface):
+  * Maria NMT
+  * NLLB
+  * T5
+* pre-trained local LLMs (assuming quantized models):
+  * Llama
+  * Mistral
+  * DCLM
+
 Key features:
 * A domain specific glossary, and related,
 * a domain specific vocabulary.
