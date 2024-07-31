@@ -166,7 +166,9 @@ cleaned text to Dutch.
   * DeepL
 * pre-trained NLMs (in principle all models that are availabe through Huggingface):
   * Maria NMT
-  * NLLB
+  * NLLB200
+  * M2M100
+  * MADLAD400
   * T5
 * pre-trained local LLMs (assuming quantized models):
   * Llama
