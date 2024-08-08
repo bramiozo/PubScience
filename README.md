@@ -49,7 +49,7 @@ Here we can a bit more detail on the projects.
 The select function must be able to pull in data in streaming mode. 
 
 For Huggingface datasets this might be easy:
-```{python}
+```python
 from datasets import load_dataset
 
 datasets = load_dataset('some/dataset', *params, streaming=True)
