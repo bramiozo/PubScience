@@ -7,11 +7,11 @@
 Repository for public-article extraction and mining.
 
 Multiple components:
-* **Select** using API's to connect with 3rd party data
-* **Retrieve** text data from Arxiv/Biorxiv/Medrxiv or Pubmed/PMC
-* **Parse** process ingress XML/JSON/HTML/PDF/CSV into desired format
-* **Identify** relevant text from generic corpora
-* **Deduplicate** remove exact and mark approximate duplicates
+* **Select** (S) using API's to connect with 3rd party data
+* **Retrieve** (S) text data from Arxiv/Biorxiv/Medrxiv or Pubmed/PMC
+* **Parse** (S) process ingress XML/JSON/HTML/PDF/CSV into desired format
+* **Identify** (S) relevant text from generic corpora
+* **Deduplicate** (S) remove exact and mark approximate duplicates
 * **Clean** the XML/JSON/.. etc. from the previous step and output cleaned text
 * **Translate** the pruned/cleaned text to any target language
 * **Anonymize** replace PII-information by placeholder terms
@@ -20,6 +20,10 @@ Multiple components:
 * **Synonimize** identify and replace typos
 * **Deabbreviate** identify and deabbreviate abbreviations
 * **Stats** extract corpus statistics
+
+Here the (S) indicates that these functions should be calleable in streaming mode. Especially to for smaller
+domains, with limited storage capacity, we may not want to download Terabytes of corpora before we start our higher level
+processing functions.
 
 **Status** (minimum working example):
 | Task          | In progress    | Completed  |
@@ -40,7 +44,16 @@ Multiple components:
 ## Project descriptions
 Here we can a bit more detail on the projects.
 
-**Select & Retrieve**: interfaces with APIs for S2ORC/Pubmed/PMC/arxiv/medxriv/biorxiv/OAI
+**Select & Retrieve**: interfaces with APIs for S2ORC/Pubmed/PMC/arxiv/medxriv/biorxiv/OAI and Huggingface.
+
+The select function must be able to pull in data in streaming mode. 
+
+For Huggingface datasets this might be easy:
+```{python}
+from datasets import load_dataset
+
+datasets = load_dataset('some/dataset', *params, streaming=True)
+```
 
 **Parse**: parser to normalise incoming data in JSON/YAML or HuggingFace dataset formats
 
