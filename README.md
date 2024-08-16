@@ -157,6 +157,9 @@ A simple recipe could be (1) use command line string manipulation tools such as 
 so for instance `grep "cardiale\|hartziekte\|vasculair\|tachycardie\|hartritme\|angina pectoris\|vaatlijden"  nl_clean_0000.jsonl > nl_clean_cardiale.jsonl`,
 this is then followed by (2) a bi-encoder to check whether documents are 'near' medical texts or (3) a supervised model to identify medical texts.
 
+We want to be able to do this as part of the select process. E.g. in case of the PubMed fulltext articles we 
+can use the abstract for semantic search to identify the relevant PubMed identifiers, which we can then selectively parse from the fulltext.
+
 ## Deduplicate
 
 ## Clean
