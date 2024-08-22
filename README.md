@@ -243,10 +243,10 @@ As part of Dutch generic corpora
 * COW14. Raw: **5.3GB**
 * TnwC: ask permission to share with AMC. Raw: **3.1GB**
 * CC100. Raw: **31.5GB**
-* [mC4](https://huggingface.co/datasets/yhavinga/mc4_nl_cleaned). Raw: **151GB**
-* [Gigacorpus](http://gigacorpus.nl/). Raw: **234GB**
-* [MADLAD-400](https://huggingface.co/datasets/allenai/MADLAD-400), see [paper](https://arxiv.org/abs/2309.04662). Raw: **118.2GB**
-* [PleIAs, common corpus](https://huggingface.co/datasets/PleIAs/Dutch-PD). Raw: **180GB**
+* [mC4](https://huggingface.co/datasets/yhavinga/mc4_nl_cleaned/tree/main/mc4_nl_cleaned/train). Raw: **151GB**
+* (KILLED BY BREIN) [Gigacorpus](http://gigacorpus.nl/). Raw: **234GB**
+* [MADLAD-400](https://huggingface.co/datasets/allenai/MADLAD-400/tree/main/data/nl), see [paper](https://arxiv.org/abs/2309.04662). Raw: **118.2GB**
+* [PleIAs, common corpus](https://huggingface.co/datasets/PleIAs/Dutch-PD/tree/main) Raw: **180GB**
 
 As part of English corpora that we can filter, clean, then translate
 * MIMIC III. **3.4GB**
