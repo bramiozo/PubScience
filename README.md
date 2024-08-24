@@ -128,6 +128,10 @@ Tools
 * [fitz](https://github.com/pymupdf/PyMuPDF)
 * [beautifulsoup](https://www.crummy.com/software/BeautifulSoup/)
 * [scrapy](https://docs.scrapy.org/en/latest/)
+* [html2text](https://github.com/Alir3z4/html2text)
+* [Compact language detector](https://github.com/CLD2Owners/cld2)
+* [justText](https://pypi.org/project/jusText/)
+* [Fixes Text For You](https://ftfy.readthedocs.io/en/latest/)
 
 Language:
 This is primarily interesting because large scale text-processing can in principle be parallelized in
