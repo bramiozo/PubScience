@@ -233,10 +233,6 @@ Text extraction pipelines:
 
 ## Dutch
 
-As part of multi-lingual corpora
-* [Aya collection](https://huggingface.co/datasets/CohereForAI/aya_collection)
-
-
 As part of Dutch generic corpora
 * SoNaR. Raw: $~$ **5GB**
 * OSCAR. Raw: **41.5GB**
@@ -244,9 +240,12 @@ As part of Dutch generic corpora
 * TnwC: ask permission to share with AMC. Raw: **3.1GB**
 * CC100. Raw: **31.5GB**
 * [mC4](https://huggingface.co/datasets/yhavinga/mc4_nl_cleaned/tree/main/mc4_nl_cleaned/train). Raw: **151GB**
-* (KILLED BY BREIN) [Gigacorpus](http://gigacorpus.nl/). Raw: **234GB**
+* [Gigacorpus](https://web.archive.org/web/20240414113716/http://gigacorpus.nl/). Raw: **234GB**
 * [MADLAD-400](https://huggingface.co/datasets/allenai/MADLAD-400/tree/main/data/nl), see [paper](https://arxiv.org/abs/2309.04662). Raw: **118.2GB**
 * [PleIAs, common corpus](https://huggingface.co/datasets/PleIAs/Dutch-PD/tree/main) Raw: **180GB**
+
+Here we have to note that CC100, mC4, GigaCorpus and MADLAD-400 all consists primarily (if not solely) of CC text.
+The mC4 corpus is "filtered" for profanities and is therefore unsuitable as a basis for medical corpora.
 
 As part of English corpora that we can filter, clean, then translate
 * MIMIC III. **3.4GB**
