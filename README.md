@@ -249,7 +249,7 @@ As part of Dutch generic corpora
 * [PleIAs, common corpus](https://huggingface.co/datasets/PleIAs/Dutch-PD/tree/main) Raw: **180GB**
 
 Here we have to note that CC100, mC4, GigaCorpus and MADLAD-400 all consists primarily (if not solely) of CC text.
-The mC4 corpus is "filtered" for profanities and is therefore unsuitable as a basis for medical corpora.
+The mC4 corpus is "filtered" for profanities and is therefore unsuitable as a basis for medical corpora. If you use multiple extraction versions of CC, be aware of the considerable required effort to deduplicates the text.
 
 As part of English corpora that we can filter, clean, then translate
 * MIMIC III. **3.4GB**
