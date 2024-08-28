@@ -256,6 +256,7 @@ As part of English corpora that we can filter, clean, then translate
 * MIMIC III CXR: **0.421GB**
 * MIMIC IV: **2GB**
 * eICU: **0.32GB**
+* [PMC Patients](https://huggingface.co/datasets/zhengyun21/PMC-Patients): $160$k patient records
 * [PMC OA COMM](https://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_bulk/oa_comm/txt/):  **54GB** compressed,  **150GB** uncompressed
 * [PMC OA NON COMM](https://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_bulk/oa_noncomm/txt/): **16GB** compressed,  **50GB** uncompressed, PMC OA represent more than _3M_ articles
 * [Pubmed abstracts](https://github.com/thoppe/The-Pile-PubMed?tab=readme-ov-file)
