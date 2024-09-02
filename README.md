@@ -2,6 +2,18 @@
 <img src="https://github.com/bramiozo/PubScience/blob/main/logo.webp" alt="image" width="300" height="auto" >
  </p>
 <hr width=100%>
+
+Affiliated with
+
+<div align="center" style="background-color: white">
+  <a href="https://www.datatools4heart.eu/">
+    <img height="60px" src="dt4h_logo_color.svg" alt="DataTools4Heart Project"/>
+  </a>
+  &nbsp; &nbsp; &nbsp; &nbsp;
+  <a href="https://www.ai4hf.com/">
+    <img height="60px" src="ai4hf_logo.svg" alt="AI4HF Project"/>
+  </a>
+</div>
  
 # PubScience
 Repository for public-article extraction and mining.
@@ -33,13 +45,13 @@ processing functions.
 | Identify      |   [ ]          | [ ]        |
 | Deduplicate   |   [ ]          | [ ]        |
 | Clean         |   [x]          | [ ]        |
-| Translate     |   [ ]          | [ ]        |
+| Translate     |   [x]          | [ ]        |
 | Anonymise     |   [x]          | [ ]        |
 | Share         |   [ ]          | [ ]        |
 | Augment       |   [ ]          | [ ]        |
 | Synonimize    |   [ ]          | [ ]        |
 | Deabbreviate  |   [ ]          | [ ]        |
-| Stats         |   [x]          | [ ]        |
+| Stats         |   [ ]          | [ ]        |
 
 ## Project descriptions
 Here we can a bit more detail on the projects.
