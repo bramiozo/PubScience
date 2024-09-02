@@ -1,9 +1,6 @@
  <p align="center">
-<img src="https://github.com/bramiozo/PubScience/blob/main/logo.webp" alt="image" width="300" height="auto" >
+<img src="https://github.com/bramiozo/PubScience/blob/main/logo.webp" alt="image" width="200" height="auto" >
  </p>
-
-_Affiliated with
-_
 
 <div align="center" style="background-color: white">
   <a href="https://www.datatools4heart.eu/">
