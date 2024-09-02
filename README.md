@@ -1,7 +1,7 @@
  <p align="center">
 <img src="https://github.com/bramiozo/PubScience/blob/main/logo.webp" alt="image" width="300" height="auto" >
+  <hr width=50%>
  </p>
-<hr width=50% align="center">
 
 Affiliated with
 
