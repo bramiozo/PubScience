@@ -7,11 +7,11 @@
 Repository for public-article extraction and mining.
 
 Multiple components:
-* **Select** using API's to connect with 3rd party data
-* **Retrieve** text data from Arxiv/Biorxiv/Medrxiv or Pubmed/PMC
-* **Parse** process ingress XML/JSON/HTML/PDF/CSV into desired format
-* **Identify** relevant text from generic corpora
-* **Deduplicate** remove exact and mark approximate duplicates
+* **Select** (S) using API's to connect with 3rd party data
+* **Retrieve** (S) text data from Arxiv/Biorxiv/Medrxiv or Pubmed/PMC
+* **Parse** (S) process ingress XML/JSON/HTML/PDF/CSV into desired format
+* **Identify** (S) relevant text from generic corpora
+* **Deduplicate** (S) remove exact and mark approximate duplicates
 * **Clean** the XML/JSON/.. etc. from the previous step and output cleaned text
 * **Translate** the pruned/cleaned text to any target language
 * **Anonymize** replace PII-information by placeholder terms
@@ -20,6 +20,10 @@ Multiple components:
 * **Synonimize** identify and replace typos
 * **Deabbreviate** identify and deabbreviate abbreviations
 * **Stats** extract corpus statistics
+
+Here the (S) indicates that these functions should be calleable in streaming mode. Especially to for smaller
+domains, with limited storage capacity, we may not want to download Terabytes of corpora before we start our higher level
+processing functions.
 
 **Status** (minimum working example):
 | Task          | In progress    | Completed  |
@@ -40,7 +44,16 @@ Multiple components:
 ## Project descriptions
 Here we can a bit more detail on the projects.
 
-**Select & Retrieve**: interfaces with APIs for S2ORC/Pubmed/PMC/arxiv/medxriv/biorxiv/OAI
+**Select & Retrieve**: interfaces with APIs for S2ORC/Pubmed/PMC/arxiv/medxriv/biorxiv/OAI and Huggingface.
+
+The select function must be able to pull in data in streaming mode. 
+
+For Huggingface datasets this might be easy:
+```python
+from datasets import load_dataset
+
+datasets = load_dataset('some/dataset', *params, streaming=True)
+```
 
 **Parse**: parser to normalise incoming data in JSON/YAML or HuggingFace dataset formats
 
@@ -115,6 +128,10 @@ Tools
 * [fitz](https://github.com/pymupdf/PyMuPDF)
 * [beautifulsoup](https://www.crummy.com/software/BeautifulSoup/)
 * [scrapy](https://docs.scrapy.org/en/latest/)
+* [html2text](https://github.com/Alir3z4/html2text)
+* [Compact language detector](https://github.com/CLD2Owners/cld2)
+* [justText](https://pypi.org/project/jusText/)
+* [Fixes Text For You](https://ftfy.readthedocs.io/en/latest/)
 
 Language:
 This is primarily interesting because large scale text-processing can in principle be parallelized in
@@ -143,6 +160,9 @@ Based on
 A simple recipe could be (1) use command line string manipulation tools such as `grep`, `awk` and `cat` for the initial pruning
 so for instance `grep "cardiale\|hartziekte\|vasculair\|tachycardie\|hartritme\|angina pectoris\|vaatlijden"  nl_clean_0000.jsonl > nl_clean_cardiale.jsonl`,
 this is then followed by (2) a bi-encoder to check whether documents are 'near' medical texts or (3) a supervised model to identify medical texts.
+
+We want to be able to do this as part of the select process. E.g. in case of the PubMed fulltext articles we 
+can use the abstract for semantic search to identify the relevant PubMed identifiers, which we can then selectively parse from the fulltext.
 
 ## Deduplicate
 
@@ -217,26 +237,26 @@ Text extraction pipelines:
 
 ## Dutch
 
-As part of multi-lingual corpora
-* [Aya collection](https://huggingface.co/datasets/CohereForAI/aya_collection)
-
-
 As part of Dutch generic corpora
 * SoNaR. Raw: $~$ **5GB**
 * OSCAR. Raw: **41.5GB**
 * COW14. Raw: **5.3GB**
 * TnwC: ask permission to share with AMC. Raw: **3.1GB**
 * CC100. Raw: **31.5GB**
-* [mC4](https://huggingface.co/datasets/yhavinga/mc4_nl_cleaned). Raw: **151GB**
-* [Gigacorpus](http://gigacorpus.nl/). Raw: **234GB**
-* [MADLAD-400](https://huggingface.co/datasets/allenai/MADLAD-400), see [paper](https://arxiv.org/abs/2309.04662). Raw: **118.2GB**
-* [PleIAs, common corpus](https://huggingface.co/datasets/PleIAs/Dutch-PD). Raw: **180GB**
+* [mC4](https://huggingface.co/datasets/yhavinga/mc4_nl_cleaned/tree/main/mc4_nl_cleaned/train). Raw: **151GB**
+* [Gigacorpus](https://web.archive.org/web/20240414113716/http://gigacorpus.nl/). Raw: **234GB**
+* [MADLAD-400](https://huggingface.co/datasets/allenai/MADLAD-400/tree/main/data/nl), see [paper](https://arxiv.org/abs/2309.04662). Raw: **118.2GB**
+* [PleIAs, common corpus](https://huggingface.co/datasets/PleIAs/Dutch-PD/tree/main) Raw: **180GB**
+
+Here we have to note that CC100, mC4, GigaCorpus and MADLAD-400 all consists primarily (if not solely) of CC text.
+The mC4 corpus is "filtered" for profanities and is therefore unsuitable as a basis for medical corpora. If you use multiple extraction versions of CC, be aware of the considerable required effort to deduplicates the text.
 
 As part of English corpora that we can filter, clean, then translate
 * MIMIC III. **3.4GB**
 * MIMIC III CXR: **0.421GB**
 * MIMIC IV: **2GB**
 * eICU: **0.32GB**
+* [PMC Patients](https://huggingface.co/datasets/zhengyun21/PMC-Patients): $160$k patient records
 * [PMC OA COMM](https://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_bulk/oa_comm/txt/):  **54GB** compressed,  **150GB** uncompressed
 * [PMC OA NON COMM](https://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_bulk/oa_noncomm/txt/): **16GB** compressed,  **50GB** uncompressed, PMC OA represent more than _3M_ articles
 * [Pubmed abstracts](https://github.com/thoppe/The-Pile-PubMed?tab=readme-ov-file)
