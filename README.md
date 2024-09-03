@@ -287,9 +287,10 @@ As part of Dutch clinical texts
 * NtvG journals
 * Dutch medical protocols
 * medical health records from participating medical centers.
+* [EMEA](https://opus.nlpl.eu/EMEA/corpus/version/EMEA)
 
 ## Spanish
-
+* [CARES](https://huggingface.co/datasets/chizhikchi/CARES)
 
 ## Translation of majority language sources
 
