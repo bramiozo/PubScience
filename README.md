@@ -277,7 +277,7 @@ As part of English corpora that we can filter, clean, then translate
 
 We have Italian corpora:
 * [BioBERT Italian](https://huggingface.co/datasets/IVN-RIN/BioBERT_Italian)
-* [Medical mT5[(https://huggingface.co/datasets/HiTZ/Multilingual-Medical-Corpus)
+* [Medical mT5](https://huggingface.co/datasets/HiTZ/Multilingual-Medical-Corpus)
 
 
 And in principle we are able to identify medical texts in non-Dutch generic corpora followed by a 
