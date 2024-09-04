@@ -3,5 +3,7 @@
 *.feather
 *.parquet
 *.db
+*.sas7bdat
 *.sqllite
-
+*.env
+.env
