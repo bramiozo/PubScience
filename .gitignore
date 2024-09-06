@@ -7,3 +7,4 @@
 *.sqllite
 *.env
 .env
+pyrightconfig.json

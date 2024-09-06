@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "pubscience"
+version = "0.1.0"
+description = ""
+authors = ["Bram van Es <bramiozo@gmail.com>"]
+license = "GPL-3"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+deepl = "^1.18.0"
+google-cloud = "^0.34.0"
+python-dotenv = "^1.0.1"
+openai = "^1.43.1"
+pandas = "^2.2.2"
+py7zr = "^0.22.0"
+google-cloud-translate = "^3.16.0"
+
+[tool.poetry.group.dev.dependencies]
+jupyter = "^1.1.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
