@@ -6,5 +6,6 @@
 *.sas7bdat
 *.sqllite
 *.env
+auth/*
 .env
 pyrightconfig.json

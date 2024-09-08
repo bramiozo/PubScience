@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import Iterator, Dict, Any
 from dotenv import load_dotenv
-from google.cloud import translate_v2 as translate
+from google.cloud import translate_v2 as translate_legacy
+from google.cloud import translate_v3 as translate
+from google.oauth2 import service_account
 import deepl
 import re
 import os
@@ -12,7 +14,8 @@ import os
 #
 load_dotenv('.env')
 
-GOOGLE_TRANSLATE_API_KEY = os.getenv('GOOGLE_TRANSLATE_API_KEY')
+GOOGLE_AUTH_FILE = os.getenv('GOOGLE_AUTH_FILE')
+GOOGLE_PROJECT_ID = os.getenv('GOOGLE_PROJECT_ID')
 DEEPL_TRANSLATE_API_KEY = os.getenv('DEEPL_TRANSLATE_API_KEY')
 
 # Define the TranslationProvider interface
@@ -25,7 +28,11 @@ class DeepLProvider(TranslationProvider):
     def __init__(self, api_key: str):
         self.translator = deepl.Translator(api_key)
 
-    def translate(self, text: str, glossary: Dict[str, str], source_language: str, target_language: str) -> str:
+    def translate(self,
+                  text: str,
+                  glossary: Dict[str, str],
+                  source_language: str,
+                  target_language: str) -> str:
         # Create a regular expression pattern for glossary terms
         pattern = '|'.join(map(re.escape, glossary.keys()))
 
@@ -49,10 +56,33 @@ class DeepLProvider(TranslationProvider):
         return ''.join(translated_parts)
 
 class GoogleTranslateProvider(TranslationProvider):
-    def __init__(self, api_key: str):
-        self.translator = translate.Client(api_key=api_key)
+    def __init__(self,
+        legacy: bool = False,
+        credentials_path: str = None,
+        project_id: str = None):
+        self.legacy = legacy
+        self.project_id = project_id
+        self.translator = self.initialize_translate_client(credentials_path)
 
-    def translate(self, text: str, glossary: Dict[str, str], source_language: str, target_language: str) -> str:
+    def initialize_translate_client(self, credentials_path=None):
+        assert isinstance(credentials_path, str), "Credentials path is required."
+        credentials = service_account.Credentials.from_service_account_file(credentials_path, scopes=["https://www.googleapis.com/auth/cloud-platform"])
+        if self.legacy:
+            client = translate_legacy.Client(credentials=credentials)
+        else:
+            client = translate.TranslationServiceClient(credentials=credentials)
+        return client
+
+    def translate(self,
+                  text: str,
+                  glossary: Dict[str, str],
+                  source_language: str,
+                  target_language: str) -> str:
+
+        if self.legacy is False:
+            parent = f"projects/{self.project_id}/locations/global"
+        else:
+            parent = ""
         # Create a regular expression pattern for glossary terms
         pattern = '|'.join(map(re.escape, glossary.keys()))
 
@@ -64,20 +94,37 @@ class GoogleTranslateProvider(TranslationProvider):
             if part in glossary:
                 translated_parts.append(glossary[part])
             elif part.strip():  # Only translate non-empty parts
-                result = self.translator.translate(
-                    part,
-                    source_language=source_language,
-                    target_language=target_language
-                )
-                translated_parts.append(result['translatedText'])
+                if self.legacy:
+                    result = self.translator.translate(
+                        part,
+                        source_language=source_language,
+                        target_language=target_language
+                    )
+                    translated_parts.append(result['translatedText'])
+                else:
+                    result = self.translator.translate_text(
+                        request={
+                            "parent": parent,
+                            "contents": [part],
+                            "mime_type": "text/plain",
+                            "source_language_code": source_language,
+                            "target_language_code" :target_language
+                        }
+                    )
+                    translated_parts.append(result.translations[0].translated_text)
             else:
                 translated_parts.append(part)  # Keep empty parts (spaces, newlines) as is
 
         return ''.join(translated_parts)
 
 class TranslationAPI:
-    def __init__(self, provider: str, glossary: Dict[str, str], source_language: str, target_language: str):
-        if not GOOGLE_TRANSLATE_API_KEY or not DEEPL_TRANSLATE_API_KEY:
+    def __init__(self,
+                 provider: str,
+                 glossary: Dict[str, str],
+                 source_language: str,
+                 target_language: str,
+                 legacy_google: bool = False):
+        if not (GOOGLE_AUTH_FILE and GOOGLE_PROJECT_ID) or not DEEPL_TRANSLATE_API_KEY:
             raise ValueError("API keys for Google Translate and DeepL are required.")
 
         self.glossary = glossary
@@ -86,7 +133,9 @@ class TranslationAPI:
         if provider.lower() == 'deepl':
             self.provider = DeepLProvider(DEEPL_TRANSLATE_API_KEY)
         elif provider.lower() == 'google':
-            self.provider = GoogleTranslateProvider(GOOGLE_TRANSLATE_API_KEY)
+            self.provider = GoogleTranslateProvider(legacy=legacy_google,
+                                                    credentials_path=GOOGLE_AUTH_FILE,
+                                                    project_id=GOOGLE_PROJECT_ID)
         else:
             raise ValueError("Unsupported provider. Use 'deepl' or 'google'.")
 
@@ -124,10 +173,42 @@ if __name__ == '__main__':
         source_language='en',
         target_language='es'
     )
-
     # Use the translator
     translated_text_iterator = translator.translate(text_file_stream())
 
     # Print the translated text
+    print("DeepL Translation:")
+    for translated_line in translated_text_iterator:
+        print(translated_line)
+
+    # Instantiate the TranslationAPI
+    translator = TranslationAPI(
+        provider='google',
+        glossary={'Hello': 'Hola', 'Goodbye': 'Adiós'},
+        source_language='en',
+        target_language='es',
+        legacy_google=False
+    )
+    # Use the translator
+    translated_text_iterator = translator.translate(text_file_stream())
+
+    # Print the translated text
+    print("Google Translation v3:")
+    for translated_line in translated_text_iterator:
+        print(translated_line)
+
+    # Instantiate the TranslationAPI
+    translator = TranslationAPI(
+        provider='google',
+        glossary={'Hello': 'Hola', 'Goodbye': 'Adiós'},
+        source_language='en',
+        target_language='es',
+        legacy_google=True
+    )
+    # Use the translator
+    translated_text_iterator = translator.translate(text_file_stream())
+
+    # Print the translated text
+    print("Google Translation v2:")
     for translated_line in translated_text_iterator:
         print(translated_line)
