@@ -14,6 +14,17 @@ from typing import Optional, Dict, List, Any
 
 load_dotenv('.env')
 
+"""
+This module contains classes to translate annotated and non-annotated corpora.
+
+Output: {'translated_text': bla,
+         'proba_char_range': [(0, 30, 0.942), (30, 35, 0.72)...
+         'source_lang': bla,
+         'target_lang': bla
+         }
+"""
+
+
 
 
 class TranslationLLM:
