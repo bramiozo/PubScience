@@ -28,5 +28,7 @@ translation:
   dest_lang: nl
   batch_size: 50
   write_mode: w
-  public_key_file: "/home/bramiozo/DEV/clinicalnlp-us.json"
-  local_glossary_file: "config/glossary.csv"
+  public_key_file: '/home/bramiozo/DEV/clinicalnlp-us.json'
+  local_glossary_file: 'config/glossary.csv'
+  system_prompt: "You are a faithful and truthful translator in the medical/clinical domain. The user query is formatted as a dictionary {'source_language':.., 
+  'target_language':.., 'text_to_translate':..}, your response should be: 'translated_text': YOUR_TRANSLATION"
