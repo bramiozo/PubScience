@@ -15,7 +15,6 @@ from typing import Optional, Dict, List, Any
 load_dotenv('.env')
 
 
-
 class TranslationLLM:
     def __init__(self,
         api_key: str,
@@ -31,4 +30,5 @@ class TranslationLLM:
         elif engine == 'anthropic':
             self.client = anthropic_client(api_key=os.getenv('ANTHROPIC_LLM_API_KEY'))
         elif engine == 'google':
-            self.client = google_gen.Client(api_key=os.getenv('GOOGLE_LLM_API_KEY'))
+            google_gen.configure(api_key=os.getenv('GOOGLE_LLM_API_KEY'))
+            self.client = google_gen.GenerativeModel(model_name=model)

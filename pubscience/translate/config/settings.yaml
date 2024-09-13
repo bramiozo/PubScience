@@ -1,19 +1,32 @@
 cleaning:
   min_sentence_character_length: 15
   max_sentence_length: 128
-  sentence_delim: '[.:]'
+  sentence_delim: "[.:]"
   remove_characters: '[^-.,:\sA-z0-9]+'
-  replace_characters: 
-    1: ['[0-9]{3,}', '###']
-    2: ['[0-9]{2}', '##']
-    3: ['[0-9]', '#']
-    4: ['\s{2,}', ' ']
+  replace_characters:
+    1: ["[0-9]{3,}", "###"]
+    2: ["[0-9]{2}", "##"]
+    3: ["[0-9]", "#"]
+    4: ['\s{2,}', " "]
   write_mode: w
 translation:
+  method:
+    llm:
+      provider: google
+      model: gemini-1.5-flash
+      batch_size: 16
+      max_tokens: 512
+    api:
+      provider: google
+      batch_size: 32
+      max_tokens: 512
+    ntm:
+      model: nllb200
+      batch_size: 16
+  engine: deepl
   source_lang: en
   dest_lang: nl
-  method: public
   batch_size: 50
   write_mode: w
-  public_key_file: '/home/bramiozo/DEV/clinicalnlp-us.json'
-  local_glossary_file: 'config/glossary.csv'
+  public_key_file: "/home/bramiozo/DEV/clinicalnlp-us.json"
+  local_glossary_file: "config/glossary.csv"
