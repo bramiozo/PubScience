@@ -242,7 +242,7 @@ Text extraction pipelines:
 * download XML, fix broken XML, extract body text, translate, clean, store
 * download pdf, extract Dutch section, clean, store
 
-# Sources
+# Pre-training Sources
 
 ## Dutch
 
@@ -291,6 +291,28 @@ As part of Dutch clinical texts
 
 ## Spanish
 * [CARES](https://huggingface.co/datasets/chizhikchi/CARES)
+
+# Finetuning source
+
+## English
+
+**Sentence similarity**
+* [WikiMedical sentence similarity](https://huggingface.co/datasets/nuvocare/WikiMedical_sentence_similarity)
+
+**NER**
+
+**Entity classification**
+
+**Document classification**
+
+**Summarisation**
+
+**Q/A**
+
+
+
+
+
 
 ## Translation of majority language sources
 
