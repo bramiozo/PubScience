@@ -11,9 +11,14 @@
 
 ```python
 from pubscience.translate import api as pubApi
+from pubscience.share import parqueteur
 
-transAPI = pubApi(provider='google', glossary=None, source_lang='en', target_lang='nl', n_jobs=2, cost_limit=100)
-translator = transAPI.translate(list_of_texts)
+kwargs = {'source_lang': 'en',
+          'target_lang': 'nl'}
+
+transAPI = pubApi(provider='google', glossary=None, n_jobs=2, cost_limit=100, **kwargs)
+translator = transAPI.translate(list_of_texts) # iterator that gives a tuple(source, target)
+parqueteur.from_translations(translator, )
 ```
 
 # LLM functionality
