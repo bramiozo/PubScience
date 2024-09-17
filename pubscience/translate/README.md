@@ -9,6 +9,12 @@
 
 # API functionality
 
+```python
+from pubscience.translate import api as pubApi
+
+transAPI = pubApi(provider='google', glossary=None, source_lang='en', target_lang='nl', n_jobs=2, cost_limit=100)
+translator = transAPI.translate(list_of_texts)
+```
 
 # LLM functionality
 
