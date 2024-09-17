@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Iterator, Dict, Any
+from typing import Iterator, Dict, Any, Tuple
 from dotenv import load_dotenv
 from google.cloud import translate_v2 as translate_legacy
 from google.cloud import translate_v3 as translate
@@ -7,6 +7,7 @@ from google.oauth2 import service_account
 import deepl
 import re
 import os
+from functools import lru_cache
 
 # DeepL: https://www.deepl.com/en/pro-api
 # Google: https://cloud.google.com/translate/pricing
@@ -18,6 +19,19 @@ GOOGLE_AUTH_FILE = os.getenv('GOOGLE_AUTH_FILE')
 GOOGLE_PROJECT_ID = os.getenv('GOOGLE_PROJECT_ID')
 DEEPL_TRANSLATE_API_KEY = os.getenv('DEEPL_TRANSLATE_API_KEY')
 
+def dict_to_tuple(d: Dict[str, str]) -> Tuple[Tuple[str, str], ...]:
+    """
+    Convert a dictionary to a sorted tuple of key-value pairs.
+    Sorting ensures that the tuple is consistent regardless of insertion order.
+    """
+    return tuple(sorted(d.items()))
+
+def tuple_to_dict(t: Tuple[Tuple[str, str], ...]) -> Dict[str, str]:
+    """
+    Convert a tuple of key-value pairs back to a dictionary.
+    """
+    return dict(t)
+
 # Define the TranslationProvider interface
 class TranslationProvider(ABC):
     @abstractmethod
@@ -28,12 +42,15 @@ class DeepLProvider(TranslationProvider):
     def __init__(self, api_key: str):
         self.translator = deepl.Translator(api_key)
 
+    @lru_cache(maxsize=128_000)
     def translate(self,
                   text: str,
-                  glossary: Dict[str, str],
+                  glossary_tuple: Tuple[Tuple[str, str], ...],
                   source_language: str,
                   target_language: str) -> str:
+
         # Create a regular expression pattern for glossary terms
+        glossary = tuple_to_dict(glossary_tuple)
         pattern = '|'.join(map(re.escape, glossary.keys()))
 
         # Split the text into translatable and non-translatable parts
@@ -73,12 +90,14 @@ class GoogleTranslateProvider(TranslationProvider):
             client = translate.TranslationServiceClient(credentials=credentials)
         return client
 
+    @lru_cache(maxsize=128_000)
     def translate(self,
                   text: str,
-                  glossary: Dict[str, str],
+                  glossary_tuple: Tuple[Tuple[str, str], ...],
                   source_language: str,
                   target_language: str) -> str:
 
+        glossary = tuple_to_dict(glossary_tuple)
         if self.legacy is False:
             parent = f"projects/{self.project_id}/locations/global"
         else:
@@ -140,8 +159,10 @@ class TranslationAPI:
             raise ValueError("Unsupported provider. Use 'deepl' or 'google'.")
 
     def translate(self, text_file_stream: Iterator[str]) -> Iterator[str]:
+        glossary_tuple = dict_to_tuple(self.glossary)
         for line in text_file_stream:
-            yield self.provider.translate(line, self.glossary, self.source_language, self.target_language)
+            yield self.provider.translate(line, glossary_tuple,
+                self.source_language, self.target_language)
 
 ############################################################################################################
 def google_cost_estimator(number_of_characters: int) -> float:
