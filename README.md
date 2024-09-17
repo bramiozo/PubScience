@@ -275,6 +275,7 @@ As part of English corpora that we can filter, clean, then translate
 * [Clinical guidelines](https://huggingface.co/datasets/epfl-llm/guidelines)
 * Medical PhD-theses
 * [Apollo corpora](https://huggingface.co/datasets/FreedomIntelligence/ApolloCorpus).
+* [UFAL multilingual corpora](https://ufal.mff.cuni.cz/ufal_medical_corpus)
 
 We have Italian corpora:
 * [BioBERT Italian](https://huggingface.co/datasets/IVN-RIN/BioBERT_Italian)
@@ -292,6 +293,9 @@ As part of Dutch clinical texts
 
 ## Spanish
 * [CARES](https://huggingface.co/datasets/chizhikchi/CARES)
+* [SBCC](https://zenodo.org/records/5513237)
+* [ScSpainCrawel](https://github.com/PlanTL-GOB-ES/SciELO-Spain-Crawler)
+
 
 # Finetuning source
 
