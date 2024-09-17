@@ -18,7 +18,7 @@ kwargs = {'source_lang': 'en',
 
 transAPI = pubApi(provider='google', glossary=None, n_jobs=2, cost_limit=100, **kwargs)
 translator = transAPI.translate(list_of_texts) # iterator that gives a tuple(source, target)
-parqueteur.from_translations(translator, )
+parqueteur.from_translations(translator, **kwargs)
 ```
 
 # LLM functionality
