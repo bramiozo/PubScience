@@ -310,6 +310,7 @@ As part of Dutch clinical texts
 
 **Q/A**
 * [BioASQ](http://participants-area.bioasq.org/datasets/)
+* [BioInstructQA](https://huggingface.co/datasets/BioMistral/BioInstructQA)
 
 
 
