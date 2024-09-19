@@ -14,8 +14,9 @@
  
 # PubScience
 
->[!WARNING]
-> This libray comes with **zero** guarantees. If you want to see improvements, please add a gitissue, or contribute with a pull-request
+>[!TIP]
+> This libray comes with **zero** guarantees. If you want to see improvements, please add a gitissue, or contribute with a pull-request.
+> If you want collaborate scientifically, please send [an email](mailto:b.vanes-3@umcutrecht.nl?subject=pubscience) 
 
 Repository for public-article extraction and mining.
 
