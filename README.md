@@ -34,6 +34,10 @@ Here the (S) indicates that these functions should be calleable in streaming mod
 domains, with limited storage capacity, we may not want to download Terabytes of corpora before we start our higher level
 processing functions.
 
+
+>[WARNING!]
+>This library comes with **zero** guarantees.
+
 **Status** (minimum working example):
 | Task          | In progress    | Completed  |
 |---------------|----------------|------------|
