@@ -13,6 +13,10 @@
 </div>
  
 # PubScience
+
+>[!WARNING]
+> This libray comes with **zero** guarantees. If you want to see improvements, please add a gitissue, or contribute with a pull-request
+
 Repository for public-article extraction and mining.
 
 Multiple components:
@@ -35,8 +39,7 @@ domains, with limited storage capacity, we may not want to download Terabytes of
 processing functions.
 
 
->[WARNING!]
->This library comes with **zero** guarantees.
+
 
 **Status** (minimum working example):
 | Task          | In progress    | Completed  |
