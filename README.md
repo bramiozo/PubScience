@@ -13,6 +13,11 @@
 </div>
  
 # PubScience
+
+>[!TIP]
+> This libray comes with **zero** guarantees. If you want to see improvements, please add a gitissue, or contribute with a pull-request.
+> If you want collaborate scientifically, please send [an email](mailto:b.vanes-3@umcutrecht.nl?subject=pubscience) 
+
 Repository for public-article extraction and mining.
 
 Multiple components:
@@ -33,6 +38,9 @@ Multiple components:
 Here the (S) indicates that these functions should be calleable in streaming mode. Especially to for smaller
 domains, with limited storage capacity, we may not want to download Terabytes of corpora before we start our higher level
 processing functions.
+
+
+
 
 **Status** (minimum working example):
 | Task          | In progress    | Completed  |
@@ -242,7 +250,7 @@ Text extraction pipelines:
 * download XML, fix broken XML, extract body text, translate, clean, store
 * download pdf, extract Dutch section, clean, store
 
-# Sources
+# Pre-training Sources
 
 ## Dutch
 
@@ -260,6 +268,7 @@ As part of Dutch generic corpora
 Here we have to note that CC100, mC4, GigaCorpus and MADLAD-400 all consists primarily (if not solely) of CC text.
 The mC4 corpus is "filtered" for profanities and is therefore unsuitable as a basis for medical corpora. If you use multiple extraction versions of CC, be aware of the considerable required effort to deduplicates the text.
 
+## English
 As part of English corpora that we can filter, clean, then translate
 * MIMIC III. **3.4GB**
 * MIMIC III CXR: **0.421GB**
@@ -274,6 +283,7 @@ As part of English corpora that we can filter, clean, then translate
 * [Clinical guidelines](https://huggingface.co/datasets/epfl-llm/guidelines)
 * Medical PhD-theses
 * [Apollo corpora](https://huggingface.co/datasets/FreedomIntelligence/ApolloCorpus).
+* [UFAL multilingual corpora](https://ufal.mff.cuni.cz/ufal_medical_corpus)
 
 We have Italian corpora:
 * [BioBERT Italian](https://huggingface.co/datasets/IVN-RIN/BioBERT_Italian)
@@ -291,6 +301,32 @@ As part of Dutch clinical texts
 
 ## Spanish
 * [CARES](https://huggingface.co/datasets/chizhikchi/CARES)
+* [SBCC](https://zenodo.org/records/5513237)
+* [ScSpainCrawel](https://github.com/PlanTL-GOB-ES/SciELO-Spain-Crawler)
+
+
+# Finetuning source
+
+## English
+
+**Sentence similarity**
+* [WikiMedical sentence similarity](https://huggingface.co/datasets/nuvocare/WikiMedical_sentence_similarity)
+
+**NER**
+
+**Entity classification**
+
+**Document classification**
+
+**Summarisation**
+
+**Q/A**
+* [BioASQ](http://participants-area.bioasq.org/datasets/)
+* [BioInstructQA](https://huggingface.co/datasets/BioMistral/BioInstructQA)
+
+
+
+
 
 ## Translation of majority language sources
 
