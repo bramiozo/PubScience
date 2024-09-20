@@ -13,6 +13,7 @@ from anthropic import Client as anthropic_client
 from openai import Client as openai_client
 from openai import NotFoundError as openai_NotFoundError
 from openai import RateLimitError as openai_RateLimitError
+from groq import Groq
 
 from typing import Optional, Dict, List, Any
 
@@ -80,6 +81,8 @@ class TranslationLLM:
                 raise ValueError(f"Model {model} not available. Available models are: {AvailableModels}")
 
             self.client = google_gen.GenerativeModel(model_name=model, safety_settings=None, system_instruction=self.system_prompt, generation_config=gGenConfig)
+        elif provider == 'groq':
+            self.client = Groq(api_key=os.getenv('GROQ_LLM_API_KEY'))
 
 
     def translate(self, text: str) -> Dict[str, Any]:
@@ -89,6 +92,8 @@ class TranslationLLM:
             return self._translate_anthropic(text)
         elif self.provider == 'google':
             return self._translate_google(text)
+        elif self.provider == 'groq':
+            return self._translate_groq(text)
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")
 
@@ -135,11 +140,26 @@ class TranslationLLM:
         )
         return {'translated_text': response.text.strip()}
 
+    def _translate_groq(self, text: str) -> Dict[str, Any]:
+        response = self.client.chat.completions.create(
+            messages = [
+                {
+                    "role": "system",
+                    "content": f"{self.system_prompt}"
+                },
+                {
+                    "role": "user",
+                    "content": f"{self.system_prompt}\nTranslate from {self.source_lang} to {self.target_lang}: {text}"
+                }
+            ],
+            model = self.model
+        )
+        return {'translated_text': response.choices[0].message.content.strip()}
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Translate annotated and non-annotated corpora using LLMs.")
     parser.add_argument('--model', type=str, required=True, help='The model to use for translation.')
-    parser.add_argument('--provider', type=str, required=True, choices=['openai', 'anthropic', 'google'], help='The engine to use for translation.')
+    parser.add_argument('--provider', type=str, required=True, choices=['openai', 'anthropic', 'google', 'groq'], help='The engine to use for translation.')
     parser.add_argument('--source_lang', type=str, required=True, help='The source language of the text.')
     parser.add_argument('--target_lang', type=str, required=True, help='The target language for the translation.')
     parser.add_argument('--system_prompt', type=str, default="", help='Optional system prompt for the translation model.')
