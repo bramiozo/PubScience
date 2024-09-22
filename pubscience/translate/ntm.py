@@ -74,7 +74,11 @@ class TranslationNTM:
         self.config = self.model.config
         self.forced_bos_token_id = self.tokenizer.convert_tokens_to_ids(self.target_lang)
 
-        self.device = "cuda:0" if (torch.cuda.is_available()) & (torch.cuda.device_count()==1) else "cpu"
+        if use_gpu:
+            self.device = "cuda:0" if (torch.cuda.is_available()) & (torch.cuda.device_count()==1) else "cpu"
+        else:
+            self.device = "cpu"
+
         if torch.cuda.device_count()<=1:
             if self.device =='cuda:0':
                 #ntm_model.half()
