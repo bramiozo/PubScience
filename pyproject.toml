@@ -21,6 +21,11 @@ anthropic = "^0.34.1"
 ftfy = "^6.2.3"
 python-benedict = "^0.33.2"
 groq = "^0.11.0"
+transformers = "^4.44.2"
+datasets = "^3.0.0"
+torch = "^2.4.1"
+accelerate = "^0.34.2"
+sentencepiece = "^0.2.0"
 
 [tool.poetry.group.dev.dependencies]
 jupyter = "^1.1.1"
