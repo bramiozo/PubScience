@@ -22,6 +22,7 @@ class TranslationNTM:
                  model: Literal["facebook/nllb-200-3.3B",
                                 "facebook/nllb-200-distilled-600M"
                                 "facebook/m2m100_418M",
+                                "google/madlad400-3b-mt",
                                 "facebook/mbart-large-50-many-to-many-mmt",
                                 "vvn/en-to-dutch-marianmt"]= 'facebook/nllb-200-distilled-600M',
                  multilingual: bool=True,
@@ -114,13 +115,17 @@ class TranslationNTM:
 
 if __name__ == "__main__":
     print("Multilingual test...")
-    ntm = TranslationNTM(source_lang='eng_Latn', target_lang='nld_Latn')
-    text = "Hello world, I am a test sentence for the neural machine translation model."
+    ntm = TranslationNTM(source_lang='eng_Latn', target_lang='rus_Cyrl')
+    text = "I love you my dearest Maria."
     translated_text = ntm.translate(text)
+    print("*"*50)
     print(translated_text)
+    print("*"*50)
 
     print("Monolingual test...")
-    ntm = TranslationNTM(model='vvn/en-to-dutch-marianmt')
-    text = "Hello world, I am a test sentence for the neural machine translation model."
+    ntm = TranslationNTM(model='Helsinki-NLP/opus-mt-en-ru')
+    text = "I love you my dearest Maria."
     translated_text = ntm.translate(text)
+    print("*"*50)
     print(translated_text)
+    print("*"*50)
