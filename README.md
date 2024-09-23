@@ -15,7 +15,7 @@
 # PubScience
 
 >[!TIP]
-> This libray comes with **zero** guarantees. If you want to see improvements, please add a gitissue, or contribute with a pull-request.
+> This library comes with **zero** guarantees. If you want to see improvements, please add a gitissue, or contribute with a pull-request.
 > If you want collaborate scientifically, please send [an email](mailto:b.vanes-3@umcutrecht.nl?subject=pubscience)
 
 Repository for public-article extraction and mining.
@@ -284,6 +284,7 @@ As part of English corpora that we can filter, clean, then translate
 * Medical PhD-theses
 * [Apollo corpora](https://huggingface.co/datasets/FreedomIntelligence/ApolloCorpus).
 * [UFAL multilingual corpora](https://ufal.mff.cuni.cz/ufal_medical_corpus)
+* [SCIELO](https://huggingface.co/datasets/bigbio/scielo)
 
 We have Italian corpora:
 * [BioBERT Italian](https://huggingface.co/datasets/IVN-RIN/BioBERT_Italian)
@@ -303,7 +304,7 @@ As part of Dutch clinical texts
 * [CARES](https://huggingface.co/datasets/chizhikchi/CARES)
 * [SBCC](https://zenodo.org/records/5513237)
 * [ScSpainCrawel](https://github.com/PlanTL-GOB-ES/SciELO-Spain-Crawler)
-
+* [Biomedical crawled corpus](https://zenodo.org/records/5513237)
 
 # Finetuning source
 
@@ -311,21 +312,78 @@ As part of Dutch clinical texts
 
 **Sentence similarity**
 * [WikiMedical sentence similarity](https://huggingface.co/datasets/nuvocare/WikiMedical_sentence_similarity)
+* MedSTS
+* MedNLI
+* [SciTail](https://huggingface.co/datasets/bigbio/scitail)
 
+**Term similarity**
+* [UMNSRS](https://huggingface.co/datasets/bigbio/umnsrs)
+  
 **NER**
 
-**Entity classification**
+* [MultiCardioNER](https://temu.bsc.es/multicardioner/)
+* [DisTEMIST](https://zenodo.org/records/7614764)
+* [SympTEMIST](https://zenodo.org/records/10635215)
+* [PharmaCoNER](https://zenodo.org/records/4270158)
+* [MEDDOPROF](https://zenodo.org/records/7116201)
+* [MEDDOPLACE](https://zenodo.org/records/8403498)
+* [MEDDOCAN](https://zenodo.org/records/4279323)
+* [Cantemist](https://zenodo.org/records/3978041)
+* [CodiEsp](https://zenodo.org/records/3837305)
+* [LivingNER](https://zenodo.org/records/7684093)
+* [BC2GM](https://huggingface.co/datasets/spyysalo/bc2gm_corpus)
+* [BC4CHEMD](https://huggingface.co/datasets/chintagunta85/bc4chemd)
+* [BC5CDR](https://huggingface.co/datasets/tner/bc5cdr)
+* [MedMentions](https://github.com/chanzuckerberg/MedMentions)
+* [NCBI disease](https://huggingface.co/datasets/ncbi/ncbi_disease)
+* [JNLPBA](https://huggingface.co/datasets/jnlpba/jnlpba), [this](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/JNLPBA) seems to be larger
+* [CRAFT](https://github.com/UCDenver-ccp/CRAFT)
+* [CONECO](https://huggingface.co/datasets/bigbio/coneco)
+* [Flambe](https://huggingface.co/datasets/bigbio/flambe)
+* [S800](https://species.jensenlab.org/)
+* [NLM GENE](https://huggingface.co/datasets/bigbio/nlm_gene)
+* [tmVar](https://huggingface.co/datasets/bigbio/tmvar_v3)
+* [GENIA](https://nlp.stanford.edu/~mcclosky/biomedical.html)
+* [SCAI Disease](https://huggingface.co/datasets/bigbio/scai_disease)
+* [SCAI Chemical](https://huggingface.co/datasets/bigbio/scai_chemical)
+* [NLM WSD](https://huggingface.co/datasets/bigbio/nlm_wsd)
 
+**Entity classification**
+* BIOSSES
+ 
+
+**Relationship extraction**
+* [DDI](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/ddi)
+* [ChemProt](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/chemprot)
+* [GAD](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/GAD)
+* [DrugProt](https://huggingface.co/datasets/bigbio/drugprot)
+* [BioRed](https://huggingface.co/datasets/bigbio/biored)
+  
 **Document classification**
+* [HoC](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/HoC)
+* [NLMChem](https://huggingface.co/datasets/bigbio/nlmchem)
 
 **Summarisation**
 
 **Q/A**
 * [BioASQ](http://participants-area.bioasq.org/datasets/)
 * [BioInstructQA](https://huggingface.co/datasets/BioMistral/BioInstructQA)
+* [PubMedQA](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/pubmedqa)
+* [SCIq](https://huggingface.co/datasets/bigbio/sciq)
+* [SciFact](https://huggingface.co/datasets/bigbio/scifact)
 
 
+## German
 
+**NER**
+* [CARDIODE](https://huggingface.co/datasets/bigbio/cardiode)
+* [GGPONC2](https://huggingface.co/datasets/bigbio/ggponc2)
+* [Bronco](https://huggingface.co/datasets/bigbio/bronco)
+
+## Spanish
+
+**Entity Classification**
+* [NUBes](https://github.com/Vicomtech/NUBes-negation-uncertainty-biomedical-corpus)
 
 
 ## Translation of majority language sources

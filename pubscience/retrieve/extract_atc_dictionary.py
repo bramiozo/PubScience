@@ -7,6 +7,7 @@ import pprint
 from time import sleep
 import pandas
 import dotenv
+from collections import defaultdict
 from tqdm import tqdm
 dotenv.load_dotenv('.env')
 
@@ -45,7 +46,15 @@ def main(filename: str):
     list_of_final_dicts= [] # OMFG THIS IS UGLY
     errors = []
     COUNT = 0
+    error_dict = defaultdict(int)        
     print("Start parsing")
+    
+    level_1_dict = {}
+    level_1_2_dict = {}
+    level_1_2_3_dict = {}
+    level_1_2_3_4_dict = {}
+    
+    
     with open(filename, 'w') as file:
         for _atc_code, _atc_name in tqdm(ATC_STR[['ATC_code', 'STR']].values):
             sleep(3)
@@ -54,54 +63,58 @@ def main(filename: str):
             response = requests.get(url)
             if response.status_code == 200:
                 html_content = response.text
+                if '<h2>Invalid code.</h2>' not in html_content: 
+                    results = re.findall(atc_pattern, html_content)
 
-                results = re.findall(atc_pattern, html_content)
+                    list_of_dicts = []
+                    for res in results:
+                        atc_code = res[0]
+                        atc_name= res[1]
+                        atc_desc = res[2]
+                        list_of_dicts.append({
+                            "code" : atc_code,
+                            "name": atc_name,
+                            "desc": remove_p_tags(atc_desc)
+                        })
 
-                list_of_dicts = []
-                for res in results:
-                    atc_code = res[0]
-                    atc_name= res[1]
-                    atc_desc = res[2]
-                    list_of_dicts.append({
-                        "code" : atc_code,
-                        "name": atc_name,
-                        "desc": remove_p_tags(atc_desc)
-                    })
-
-                final_dict = {}
-                for level in range(len(list_of_dicts)):
-                    if level<len(list_of_dicts)-1:
-                        final_dict[list_of_dicts[level]['code']] = {
-                            "name": list_of_dicts[level]['name'],
-                            "desc": list_of_dicts[level]['desc'],
-                            "child": {
-                                "code": list_of_dicts[level+1]['code'],
-                                "name": list_of_dicts[level+1]['name'],
-                                "desc": list_of_dicts[level+1]['desc'],
-                            }
-                        }
-                    else:
-                        final_dict[list_of_dicts[level]['code']] = {
+                    final_dict = {}
+                    for level in range(len(list_of_dicts)):
+                        if level<len(list_of_dicts)-1:
+                            final_dict[list_of_dicts[level]['code']] = {
                                 "name": list_of_dicts[level]['name'],
                                 "desc": list_of_dicts[level]['desc'],
-                                    "child": {
-                                        'code': _atc_code,
-                                        'desc': _atc_name,
-                                        'name': atc_name
+                                "child": {
+                                    "code": list_of_dicts[level+1]['code'],
+                                    "name": list_of_dicts[level+1]['name'],
+                                    "desc": list_of_dicts[level+1]['desc'],
                                 }
-                        }
-                list_of_final_dicts.append(final_dict)
-                
-                json_line = json.dumps(final_dict) + '\n'
-                file.write(json_line)
-                file.flush()                            
+                            }
+                        else:
+                            final_dict[list_of_dicts[level]['code']] = {
+                                    "name": list_of_dicts[level]['name'],
+                                    "desc": list_of_dicts[level]['desc'],
+                                        "child": {
+                                            'code': _atc_code,
+                                            'desc': _atc_name,
+                                            'name': atc_name
+                                    }
+                            }
+                    list_of_final_dicts.append(final_dict)
+                    
+                    json_line = json.dumps(final_dict) + '\n'
+                    file.write(json_line)
+                    file.flush()   
+                else:
+                    errors.append((_atc_code, "invalid code"))
+                    error_dict["invalid code"] += 1                         
             else:
-                errors.append((_atc_code, response.text))
+                errors.append((_atc_code, response.status_code))
+                error_dict[response.status_code] += 1
+                COUNT += 1
+
+    print(f"There were {len(errors)} errors")
+    print(f"These were error counts:{error_dict}")
             
-            COUNT += 1
-            
-            if COUNT>5:
-                break
 
 if __name__ == "__main__":
     main("output.jsonl")
