@@ -12,10 +12,10 @@ jsonl_name = Path(jsonl_example).stem
 
 OUTPUT_LOC = os.getenv('ex1_output')
 MAX_NUM_LINES = 37_971
-BATCH_SIZE = 16
+BATCH_SIZE = 8
 TEXT_IDS = ['title', 'clean_text']
 ID_COLS = ['id', 'source']
-MAX_LENGTH = 512
+MAX_LENGTH = 496
 LONG_TEXTS = True
 
 # load translation model
@@ -35,6 +35,7 @@ with open(jsonl_example, 'r') as file:
         batch_ids.append({_ID:line[_ID] for _ID in ID_COLS})
         token_counts.append(1.5*len(input_text.split(" ")))
 
+        # TODO: enable short/long batch processing
         if (len(batch) == batch_size):
             # Apply your function to the batch here
             # Example: process_batch(batch)
@@ -57,7 +58,7 @@ with open(jsonl_example, 'r') as file:
             batch = []
             batch_ids = []
             output_list = []
-
+            token_counts = []
 
     # Process any remaining lines in the last batch
     if batch:
