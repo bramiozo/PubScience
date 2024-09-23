@@ -11,12 +11,12 @@
     <img height="60px" src="ai4hf_logo.svg" alt="AI4HF Project"/>
   </a>
 </div>
- 
+
 # PubScience
 
 >[!TIP]
 > This libray comes with **zero** guarantees. If you want to see improvements, please add a gitissue, or contribute with a pull-request.
-> If you want collaborate scientifically, please send [an email](mailto:b.vanes-3@umcutrecht.nl?subject=pubscience) 
+> If you want collaborate scientifically, please send [an email](mailto:b.vanes-3@umcutrecht.nl?subject=pubscience)
 
 Repository for public-article extraction and mining.
 
@@ -63,7 +63,7 @@ Here we can a bit more detail on the projects.
 
 **Select & Retrieve**: interfaces with APIs for S2ORC/Pubmed/PMC/arxiv/medxriv/biorxiv/OAI and Huggingface.
 
-The select function must be able to pull in data in streaming mode. 
+The select function must be able to pull in data in streaming mode.
 
 For Huggingface datasets this might be easy:
 ```python
@@ -92,7 +92,7 @@ Following the Llama3.1 recipe we use
 * duplicated n-gram coverage ratio (see [Rao et al.](https://arxiv.org/pdf/2112.11446)) to identify error logs
 * Encoding degarbling
 * file-format headers/endings
-* using fasttext-based language detectors remove text-sections that exceed a pre-set fraction being _other lingual_ based on a per-line basis. e.g. if >50% of the paragraph or document is non-English we remove that paragraph  
+* using fasttext-based language detectors remove text-sections that exceed a pre-set fraction being _other lingual_ based on a per-line basis. e.g. if >50% of the paragraph or document is non-English we remove that paragraph
 
 The core function here is the extract the _text intended to be read_.
 
@@ -119,21 +119,21 @@ from pubscience.utils import Pipeline
 
 Cleaner = clean(**clean_kwargs)
 Deduplicate = deduplicate(**dedup_kwargs)
-Deid = anonymise(**deid_kwargs) 
+Deid = anonymise(**deid_kwargs)
 
 
-TextPipe = Pipeline([('Cleaner', Cleaner), 
-                     ('Deduplicate',  Deduplicate), 
-                     ('Deid', Deid)], 
+TextPipe = Pipeline([('Cleaner', Cleaner),
+                     ('Deduplicate',  Deduplicate),
+                     ('Deid', Deid)],
                     n_jobs=16)
 
-df['processed_text'] = TextPipe.fit_transform(df['raw_text']) 
+df['processed_text'] = TextPipe.fit_transform(df['raw_text'])
 
 # here Deduplicate adds a column to indicate the duplication degree
 ```
 
 
- <p "center">
+ <p align="center">
 <img src="https://github.com/bramiozo/PubScience/blob/main/PubScience.png" alt="image" width="300" height="auto" >
  </p>
 
@@ -160,15 +160,15 @@ an embarassingly simple way, that means we should prefer natively heteregenous l
 
 ## Select
 
-## Retrieve 
+## Retrieve
 
 * Use the API's to pull .pdf's, .xml's or .json's.
 * Pull directly from ```http``` of ```ftp```.
 * Parse from local files (parquet/csv.gzip).
 
-## Identify 
+## Identify
 
-Based on 
+Based on
 * keyword lookup, using e.g. [FlashText](https://arxiv.org/abs/1711.00046)
 * relevant document embedders (bi-encoders/cross-encoders) or
 * topic models, or
@@ -178,7 +178,7 @@ A simple recipe could be (1) use command line string manipulation tools such as 
 so for instance `grep "cardiale\|hartziekte\|vasculair\|tachycardie\|hartritme\|angina pectoris\|vaatlijden"  nl_clean_0000.jsonl > nl_clean_cardiale.jsonl`,
 this is then followed by (2) a bi-encoder to check whether documents are 'near' medical texts or (3) a supervised model to identify medical texts.
 
-We want to be able to do this as part of the select process. E.g. in case of the PubMed fulltext articles we 
+We want to be able to do this as part of the select process. E.g. in case of the PubMed fulltext articles we
 can use the abstract for semantic search to identify the relevant PubMed identifiers, which we can then selectively parse from the fulltext.
 
 ## Deduplicate
@@ -188,10 +188,10 @@ can use the abstract for semantic search to identify the relevant PubMed identif
 Fix broken XML/JSON, and select text-sections using Beautifulsoup and other Python libraries, clean for non-word characters and e.g. formatting spans.
 
 
-## Translate 
+## Translate
 
 Use Bulk google Translate/DeepL/LLM's(GPT4/Gemini/etc) or open source translation models in combination with UMLS-based glossaries to translate the
-cleaned text to Dutch. 
+cleaned text to Dutch.
 
 * External LLM APIs:
   * Google Gemini
@@ -226,11 +226,11 @@ When we translate _annotated corpora_ we need to make sure that the labeled span
 We identify three approaches: (1) span-preserving translation, (2) span-inference of translation, (3) translate-then-align
 ### Span preserving translation
 An example approach is given by [Seinen et al.](https://github.com/mi-erasmusmc/DutchClinicalCorpora); Seinen et al inject the span-information directly
-in the original text prior to translation. Even though this might, arguably, negatively effect the translation quality the resulting models trained on the 
-translated corpora showed similar accuracy to the model trained on the original English corpora. 
+in the original text prior to translation. Even though this might, arguably, negatively effect the translation quality the resulting models trained on the
+translated corpora showed similar accuracy to the model trained on the original English corpora.
 
 ### Span-inference of translation
-In principle we are able to create a training set with span-to-span information, e.g. as part of existing collective translation efforts (such as [datatools4heart](https://www.datatools4heart.eu/). 
+In principle we are able to create a training set with span-to-span information, e.g. as part of existing collective translation efforts (such as [datatools4heart](https://www.datatools4heart.eu/).
 
 ### Translate-then-align
 We translate a text _as is_: ```the fox jumps over the fence``` -> ```de vos springt over het hek```, then we identify the spans in the translated sentence.
@@ -279,7 +279,7 @@ As part of English corpora that we can filter, clean, then translate
 * [PMC OA NON COMM](https://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_bulk/oa_noncomm/txt/): **16GB** compressed,  **50GB** uncompressed, PMC OA represent more than _3M_ articles
 * [Pubmed abstracts](https://github.com/thoppe/The-Pile-PubMed?tab=readme-ov-file)
 * [S2ORC](https://github.com/allenai/s2orc): _81M_ abstracts, _8.1M_ fulltext, estimated **500GB**
-* [Biorxiv/Medrxiv](https://connect.biorxiv.org/news/2020/04/18/tdm), [also](https://github.com/BlueBrain/Search/issues/459): _0.22M_ fulltext documents, estimated **20GB** 
+* [Biorxiv/Medrxiv](https://connect.biorxiv.org/news/2020/04/18/tdm), [also](https://github.com/BlueBrain/Search/issues/459): _0.22M_ fulltext documents, estimated **20GB**
 * [Clinical guidelines](https://huggingface.co/datasets/epfl-llm/guidelines)
 * Medical PhD-theses
 * [Apollo corpora](https://huggingface.co/datasets/FreedomIntelligence/ApolloCorpus).
@@ -290,7 +290,7 @@ We have Italian corpora:
 * [Medical mT5](https://huggingface.co/datasets/HiTZ/Multilingual-Medical-Corpus)
 
 
-And in principle we are able to identify medical texts in non-Dutch generic corpora followed by a 
+And in principle we are able to identify medical texts in non-Dutch generic corpora followed by a
 translation.
 
 As part of Dutch clinical texts
