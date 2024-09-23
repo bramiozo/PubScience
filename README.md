@@ -311,18 +311,46 @@ As part of Dutch clinical texts
 
 **Sentence similarity**
 * [WikiMedical sentence similarity](https://huggingface.co/datasets/nuvocare/WikiMedical_sentence_similarity)
-
+* MedSTS
+* MedNLI
+  
 **NER**
 
-**Entity classification**
+* [MultiCardioNER](https://temu.bsc.es/multicardioner/)
+* [DisTEMIST](https://zenodo.org/records/7614764)
+* [SympTEMIST](https://zenodo.org/records/10635215)
+* [PharmaCoNER](https://zenodo.org/records/4270158)
+* [MEDDOPROF](https://zenodo.org/records/7116201)
+* [MEDDOPLACE](https://zenodo.org/records/8403498)
+* [MEDDOCAN](https://zenodo.org/records/4279323)
+* [Cantemist](https://zenodo.org/records/3978041)
+* [CodiEsp](https://zenodo.org/records/3837305)
+* [LivingNER](https://zenodo.org/records/7684093)
+* [BC2GM](https://huggingface.co/datasets/spyysalo/bc2gm_corpus)
+* [BC4CHEMD](https://huggingface.co/datasets/chintagunta85/bc4chemd)
+* [BC5CDR](https://huggingface.co/datasets/tner/bc5cdr)
+* [MedMentions](https://github.com/chanzuckerberg/MedMentions)
+* [NCBI disease](https://huggingface.co/datasets/ncbi/ncbi_disease)
+* [JNLPBA](https://huggingface.co/datasets/jnlpba/jnlpba), [this](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/JNLPBA) seems to be larger
 
+**Entity classification**
+* BIOSSES
+
+**Coreference**
+* [DDI](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/ddi)
+* [ChemProt](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/chemprot)
+* [GAD](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/GAD)
+  
 **Document classification**
+* [HoC](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/HoC)
 
 **Summarisation**
 
 **Q/A**
 * [BioASQ](http://participants-area.bioasq.org/datasets/)
 * [BioInstructQA](https://huggingface.co/datasets/BioMistral/BioInstructQA)
+* [PubMedQA](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/pubmedqa)
+
 
 
 
