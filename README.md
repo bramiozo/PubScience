@@ -350,6 +350,7 @@ As part of Dutch clinical texts
 
 **Entity classification**
 * BIOSSES
+ 
 
 **Relationship extraction**
 * [DDI](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/ddi)
@@ -379,6 +380,10 @@ As part of Dutch clinical texts
 * [GGPONC2](https://huggingface.co/datasets/bigbio/ggponc2)
 * [Bronco](https://huggingface.co/datasets/bigbio/bronco)
 
+## Spanish
+
+**Classification**
+* [NUBes](https://github.com/Vicomtech/NUBes-negation-uncertainty-biomedical-corpus)
 
 
 ## Translation of majority language sources
