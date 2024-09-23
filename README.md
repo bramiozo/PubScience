@@ -284,6 +284,7 @@ As part of English corpora that we can filter, clean, then translate
 * Medical PhD-theses
 * [Apollo corpora](https://huggingface.co/datasets/FreedomIntelligence/ApolloCorpus).
 * [UFAL multilingual corpora](https://ufal.mff.cuni.cz/ufal_medical_corpus)
+* [SCIELO](https://huggingface.co/datasets/bigbio/scielo)
 
 We have Italian corpora:
 * [BioBERT Italian](https://huggingface.co/datasets/IVN-RIN/BioBERT_Italian)
@@ -313,6 +314,10 @@ As part of Dutch clinical texts
 * [WikiMedical sentence similarity](https://huggingface.co/datasets/nuvocare/WikiMedical_sentence_similarity)
 * MedSTS
 * MedNLI
+* [SciTail](https://huggingface.co/datasets/bigbio/scitail)
+
+**Term similarity**
+* [UMNSRS](https://huggingface.co/datasets/bigbio/umnsrs)
   
 **NER**
 
@@ -332,17 +337,30 @@ As part of Dutch clinical texts
 * [MedMentions](https://github.com/chanzuckerberg/MedMentions)
 * [NCBI disease](https://huggingface.co/datasets/ncbi/ncbi_disease)
 * [JNLPBA](https://huggingface.co/datasets/jnlpba/jnlpba), [this](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/JNLPBA) seems to be larger
+* [CRAFT](https://github.com/UCDenver-ccp/CRAFT)
+* [CONECO](https://huggingface.co/datasets/bigbio/coneco)
+* [Flambe](https://huggingface.co/datasets/bigbio/flambe)
+* [S800](https://species.jensenlab.org/)
+* [NLM GENE](https://huggingface.co/datasets/bigbio/nlm_gene)
+* [tmVar](https://huggingface.co/datasets/bigbio/tmvar_v3)
+* [GENIA](https://nlp.stanford.edu/~mcclosky/biomedical.html)
+* [SCAI Disease](https://huggingface.co/datasets/bigbio/scai_disease)
+* [SCAI Chemical](https://huggingface.co/datasets/bigbio/scai_chemical)
+* [NLM WSD](https://huggingface.co/datasets/bigbio/nlm_wsd)
 
 **Entity classification**
 * BIOSSES
 
-**Coreference**
+**Relationship extraction**
 * [DDI](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/ddi)
 * [ChemProt](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/chemprot)
 * [GAD](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/GAD)
+* [DrugProt](https://huggingface.co/datasets/bigbio/drugprot)
+* [BioRed](https://huggingface.co/datasets/bigbio/biored)
   
 **Document classification**
 * [HoC](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/HoC)
+* [NLMChem](https://huggingface.co/datasets/bigbio/nlmchem)
 
 **Summarisation**
 
@@ -350,9 +368,16 @@ As part of Dutch clinical texts
 * [BioASQ](http://participants-area.bioasq.org/datasets/)
 * [BioInstructQA](https://huggingface.co/datasets/BioMistral/BioInstructQA)
 * [PubMedQA](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/pubmedqa)
+* [SCIq](https://huggingface.co/datasets/bigbio/sciq)
+* [SciFact](https://huggingface.co/datasets/bigbio/scifact)
 
 
+## German
 
+**NER**
+* [CARDIODE](https://huggingface.co/datasets/bigbio/cardiode)
+* [GGPONC2](https://huggingface.co/datasets/bigbio/ggponc2)
+* [Bronco](https://huggingface.co/datasets/bigbio/bronco)
 
 
 
