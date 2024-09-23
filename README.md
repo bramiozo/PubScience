@@ -382,7 +382,7 @@ As part of Dutch clinical texts
 
 ## Spanish
 
-**Classification**
+**Entity Classification**
 * [NUBes](https://github.com/Vicomtech/NUBes-negation-uncertainty-biomedical-corpus)
 
 
