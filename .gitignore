@@ -7,5 +7,7 @@
 *.sqllite
 *.env
 auth/*
+sandbox/*
+artifacts/*
 .env
 pyrightconfig.json
