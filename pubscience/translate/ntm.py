@@ -21,7 +21,7 @@ from typing import Dict, Tuple, Literal, Any, LiteralString
 
 class TranslationNTM:
     def __init__(self,
-                 model: Literal["facebook/nllb-200-3.3B",
+                 model_name: Literal["facebook/nllb-200-3.3B",
                                 "facebook/nllb-200-distilled-600M"
                                 "facebook/m2m100_418M",
                                 "google/madlad400-3b-mt",
@@ -32,9 +32,9 @@ class TranslationNTM:
                  provider: Literal['huggingface', 'local']='huggingface',
                  source_lang: str='eng_Latn',  # Source language code
                  target_lang: str='nld_Latn',  # Target language code
-                 max_length: int=512,
+                 max_length: int=496,
                  ):
-        self.model = model
+        self.model_name = model_name
         self.multilingual = multilingual
         self.use_gpu = use_gpu
         self.provider = provider
@@ -45,9 +45,9 @@ class TranslationNTM:
         if multilingual == False:
             logger.warning(f"""The model is not multilingual.
                 Make sure the source language {source_lang} and target language {target_lang}
-                are correct and coincide with the model {model}.""")
+                are correct and coincide with the model {model_name}.""")
         else:
-            logger.warning(f"""The model {model} is assumed to be multilingual.
+            logger.warning(f"""The model {model_name} is assumed to be multilingual.
                 The source language {source_lang} and target language {target_lang}. Make sure that they
                 coincide with the models language identifiers. For instance, nllb200 uses BCP-47 language codes.
                 """)
@@ -56,41 +56,61 @@ class TranslationNTM:
             raise ValueError("Unsupported provider. Choose either 'huggingface' or 'local'.")
 
         if self.provider == 'local':
-            if not os.path.exists(self.model):
-                raise FileNotFoundError(f"The specified model path {self.model} does not exist.")
+            if not os.path.exists(self.model_name):
+                raise FileNotFoundError(f"The specified model path {self.model_name} does not exist.")
 
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model, use_fast=True)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, use_fast=True)
 
         if self.multilingual:
             self.tokenizer.src_lang = self.source_lang
             self.tokenizer.tgt_lang = self.target_lang
 
-        try:
-            self.model = AutoModelForSeq2SeqLM.from_pretrained(self.model,
-                                            device_map='auto' if self.use_gpu else 'cpu')
-        except Exception as e:
-            if "does not support `device_map" in str(e):
-                self.model = AutoModelForSeq2SeqLM.from_pretrained(self.model)
-            else:
-                raise ValueError(e)
+        self.load_model()
 
         self.config = self.model.config
         self.forced_bos_token_id = self.tokenizer.convert_tokens_to_ids(self.target_lang)
 
-        if use_gpu:
-            self.device = "cuda:0" if (torch.cuda.is_available()) & (torch.cuda.device_count()==1) else "cpu"
-        else:
-            self.device = "cpu"
 
-        if torch.cuda.device_count()<=1:
-            if self.device =='cuda:0':
-                #ntm_model.half()
-                self.model.to(self.device)
-                self.model.eval()
-            elif self.use_gpu == True:
-                print("No GPU available. Using CPU.")
-                self.model.to(self.device)
-                self.model.eval()
+    def load_model(self):
+            if self.use_gpu:
+                self.device = "cuda:0" if (torch.cuda.is_available()) & (torch.cuda.device_count()==1) else "cpu"
+                _device = self.device
+            else:
+                self.device = "cpu"
+                _device = self.device
+
+            used_device_map = False
+            try:
+                # First, try loading the model with device_map
+                self.model = AutoModelForSeq2SeqLM.from_pretrained(
+                    self.model_name,
+                    device_map='auto' if self.use_gpu else None,
+                    torch_dtype=torch.float32  # Explicitly set dtype to avoid meta tensors
+                )
+                used_device_map = True
+            except Exception as e:
+                if "does not support `device_map" in str(e):
+                    # If device_map is not supported, load without it
+                    self.model = AutoModelForSeq2SeqLM.from_pretrained(
+                        self.model_name,
+                        torch_dtype=torch.float32
+                    )
+                    # Manually move the model to the correct device
+                    self.model = self.model.to(_device)
+                elif "Cannot copy out of meta tensor" in str(e):
+                    # Handle meta tensors
+                    self.model = AutoModelForSeq2SeqLM.from_pretrained(
+                        self.model_name,
+                        device_map='auto' if self.use_gpu else None,
+                        torch_dtype=torch.float32,
+                        low_cpu_mem_usage=True
+                    )
+                    used_device_map = True
+                else:
+                    raise ValueError(f"Unexpected error while loading model: {e}")
+            self.model.eval()
+
+            return self.model
 
     def translate(self, text: str) -> str:
         inputs = self.tokenizer(text, return_tensors="pt", padding=True, truncation=True).to(self.device)
@@ -120,7 +140,7 @@ class TranslationNTM:
             else:
                 # Translate the current chunk
                 inputs = self.tokenizer([current_chunk.strip()], return_tensors="pt").to(self.device)
-                translated = self.model.generate(**inputs)
+                translated = self.model.generate(**inputs, max_length=self.max_length)
                 translated_chunk = self.tokenizer.batch_decode(translated, skip_special_tokens=True)[0]
                 translated_text += " " + translated_chunk
 
@@ -131,46 +151,109 @@ class TranslationNTM:
         # Translate any remaining text
         if current_chunk:
             inputs = self.tokenizer([current_chunk.strip()], return_tensors="pt").to(self.device)
-            translated = self.model.generate(**inputs)
+            translated = self.model.generate(**inputs, max_length=self.max_length)
             translated_chunk = self.tokenizer.batch_decode(translated, skip_special_tokens=True)[0]
             translated_text += " " + translated_chunk
 
         return translated_text.strip()
 
     def translate_long_batch(self, texts: List[str]) -> List[str]:
-        # Split text into sentences
+        # Ensure necessary resources are downloaded
+        nltk.download('punkt', quiet=True)
 
         output_texts = []
         for text in texts:
             sentences = nltk.sent_tokenize(text)
             translated_text = ""
-            current_chunk = ""
+            current_chunk_tokens = []
             current_length = 0
 
             for sentence in sentences:
-                # Encode sentence to get its length in tokens
-                sentence_length = len(self.tokenizer.encode(sentence))
-                if current_length + sentence_length <= self.max_length:
-                    current_chunk += " " + sentence
-                    current_length += sentence_length
+                # Tokenize the sentence
+                sentence_tokens = self.tokenizer.encode(sentence, add_special_tokens=False)
+                sentence_length = len(sentence_tokens)
+
+                if sentence_length > self.max_length:
+                    # Split the sentence tokens into smaller chunks
+                    for i in range(0, sentence_length, self.max_length):
+                        chunk_tokens = sentence_tokens[i:i + self.max_length]
+                        chunk_text = self.tokenizer.decode(chunk_tokens, skip_special_tokens=True)
+                        inputs = self.tokenizer([chunk_text], return_tensors="pt").to(self.device)
+                        translated = self.model.generate(**inputs, max_length=self.max_length)
+                        translated_chunk = self.tokenizer.batch_decode(translated, skip_special_tokens=True)[0]
+                        translated_text += " " + translated_chunk
+                    # Reset current chunk
+                    current_chunk_tokens = []
+                    current_length = 0
                 else:
-                    # Translate the current chunk
-                    inputs = self.tokenizer([current_chunk.strip()], return_tensors="pt").to(self.device)
-                    translated = self.model.generate(**inputs)
-                    translated_chunk = self.tokenizer.batch_decode(translated, skip_special_tokens=True)[0]
-                    translated_text += " " + translated_chunk
+                    if current_length + sentence_length <= self.max_length:
+                        current_chunk_tokens.extend(sentence_tokens)
+                        current_length += sentence_length
+                    else:
+                        # Translate the current chunk
+                        chunk_text = self.tokenizer.decode(current_chunk_tokens, skip_special_tokens=True)
+                        inputs = self.tokenizer([chunk_text], return_tensors="pt").to(self.device)
+                        translated = self.model.generate(**inputs, max_length=self.max_length)
+                        translated_chunk = self.tokenizer.batch_decode(translated, skip_special_tokens=True)[0]
+                        translated_text += " " + translated_chunk
 
-                    # Start a new chunk with the current sentence
-                    current_chunk = sentence
-                    current_length = sentence_length
+                        # Start a new chunk with the current sentence tokens
+                        current_chunk_tokens = sentence_tokens
+                        current_length = sentence_length
 
-            # Translate any remaining text
-            if current_chunk:
-                inputs = self.tokenizer([current_chunk.strip()], return_tensors="pt").to(self.device)
-                translated = self.model.generate(**inputs)
+            # Translate any remaining tokens
+            if current_chunk_tokens:
+                chunk_text = self.tokenizer.decode(current_chunk_tokens, skip_special_tokens=True)
+                inputs = self.tokenizer([chunk_text], return_tensors="pt").to(self.device)
+                translated = self.model.generate(**inputs, max_length=self.max_length)
                 translated_chunk = self.tokenizer.batch_decode(translated, skip_special_tokens=True)[0]
                 translated_text += " " + translated_chunk
 
+            output_texts.append(translated_text.strip())
+        return output_texts
+
+    def translate_long_batch_v2(self, texts: List[str], batch_size: int = 8) -> List[str]:
+        nltk.download('punkt', quiet=True)
+
+        output_texts = []
+        for text in texts:
+            sentences = nltk.sent_tokenize(text)
+            chunks = []
+            current_chunk_tokens = []
+            current_length = 0
+
+            # Prepare chunks
+            for sentence in sentences:
+                sentence_tokens = self.tokenizer.encode(sentence, add_special_tokens=False)
+                sentence_length = len(sentence_tokens)
+
+                if sentence_length > self.max_length:
+                    for i in range(0, sentence_length, self.max_length):
+                        chunk_tokens = sentence_tokens[i:i + self.max_length]
+                        chunks.append(chunk_tokens)
+                else:
+                    if current_length + sentence_length <= self.max_length:
+                        current_chunk_tokens.extend(sentence_tokens)
+                        current_length += sentence_length
+                    else:
+                        chunks.append(current_chunk_tokens)
+                        current_chunk_tokens = sentence_tokens
+                        current_length = sentence_length
+            if current_chunk_tokens:
+                chunks.append(current_chunk_tokens)
+
+            # Translate chunks in batches
+            translated_chunks = []
+            for i in range(0, len(chunks), batch_size):
+                batch_chunks = chunks[i:i + batch_size]
+                batch_texts = [self.tokenizer.decode(chunk_tokens, skip_special_tokens=True) for chunk_tokens in batch_chunks]
+                inputs = self.tokenizer(batch_texts, return_tensors="pt", padding=True, truncation=True, max_length=self.max_length).to(self.device)
+                translated = self.model.generate(**inputs, max_length=self.max_length)
+                batch_translations = self.tokenizer.batch_decode(translated, skip_special_tokens=True)
+                translated_chunks.extend(batch_translations)
+
+            # Assemble translated text
+            translated_text = " ".join(translated_chunks)
             output_texts.append(translated_text.strip())
         return output_texts
 
