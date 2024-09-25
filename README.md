@@ -347,6 +347,7 @@ As part of Dutch clinical texts
 * [SCAI Disease](https://huggingface.co/datasets/bigbio/scai_disease)
 * [SCAI Chemical](https://huggingface.co/datasets/bigbio/scai_chemical)
 * [NLM WSD](https://huggingface.co/datasets/bigbio/nlm_wsd)
+* [n2c2](https://n2c2.dbmi.hms.harvard.edu/data-sets)
 
 **Entity classification**
 * BIOSSES
