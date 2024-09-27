@@ -1,4 +1,42 @@
-{"V": {"name": "VARIOUS", "desc": "", "child": {"code": "V03", "name": "ALL OTHER THERAPEUTIC PRODUCTS", "desc": ""}}, "V03": {"name": "ALL OTHER THERAPEUTIC PRODUCTS", "desc": "", "child": {"code": "V03A", "name": "ALL OTHER THERAPEUTIC PRODUCTS", "desc": ""}}, "V03A": {"name": "ALL OTHER THERAPEUTIC PRODUCTS", "desc": "", "child": {"code": "V03AF", "name": "Detoxifying agents for antineoplastic treatment", "desc": ""}}, "V03AF": {"name": "Detoxifying agents for antineoplastic treatment", "desc": "", "child": {"code": "V03AF01", "desc": "mesna", "name": "Detoxifying agents for antineoplastic treatment"}}}
+{"V":
+  {"name": "VARIOUS",
+  "desc": "",
+  "child":
+  {
+  "code": "V03",
+   "name": "ALL OTHER THERAPEUTIC PRODUCTS",
+   "desc": ""}
+   },
+   "V03":
+   {
+   "name": "ALL OTHER THERAPEUTIC PRODUCTS",
+   "desc": "",
+   "child":
+    {
+    "code": "V03A",
+    "name": "ALL OTHER THERAPEUTIC PRODUCTS",
+    "desc": ""}
+    },
+    "V03A":
+    {
+    "name": "ALL OTHER THERAPEUTIC PRODUCTS",
+    "desc": "",
+    "child":
+     {
+     "code": "V03AF",
+      "name": "Detoxifying agents for antineoplastic treatment",
+      "desc": ""}
+      },
+      "V03AF":
+       {
+       "name": "Detoxifying agents for antineoplastic treatment",
+       "desc": "",
+       "child":
+       {"code": "V03AF01",
+        "desc": "mesna",
+         "name": "Detoxifying agents for antineoplastic treatment"}
+         }
+      }
 {"R": {"name": "RESPIRATORY SYSTEM", "desc": "Inhaled antiinfectives are classified in ATC group J - Antiinfectives for systemic use.", "child": {"code": "R05", "name": "COUGH AND COLD PREPARATIONS", "desc": ""}}, "R05": {"name": "COUGH AND COLD PREPARATIONS", "desc": "", "child": {"code": "R05CB", "name": "Mucolytics", "desc": ""}}, "R05CB": {"name": "Mucolytics", "desc": "", "child": {"code": "R05CB05", "desc": "mesna", "name": "Mucolytics"}}}
 {"C": {"name": "CARDIOVASCULAR SYSTEM", "desc": "This group comprises substances used for the treatment of cardiovascular conditions.Drugs used for the treatment of hypertension are classified in C02 - Antihypertensives, C03 - Diuretics, C07 - Beta blocking agents, C08 - Calcium channel blockers, and C09 - Agents acting on the renin-angiotensin system. For the classification of combination products of antihypertensives from different ATC groups, the following ranking should be used, from higher to lower precedence: C09, C07, C08, and C03.", "child": {"code": "C01", "name": "CARDIAC THERAPY", "desc": ""}}, "C01": {"name": "CARDIAC THERAPY", "desc": "", "child": {"code": "C01CA", "name": "Adrenergic and dopaminergic agents", "desc": "This group comprises sympathomimetics used in the treatment of hypotension.  Centhaquine for the treatment of hypovolemic shock is classified here.Etilefrine in combination with dihydroergotamine is classified in this group.Oral products of ephedrine are classified in R03CA."}}, "C01CA": {"name": "Adrenergic and dopaminergic agents", "desc": "This group comprises sympathomimetics used in the treatment of hypotension.  Centhaquine for the treatment of hypovolemic shock is classified here.Etilefrine in combination with dihydroergotamine is classified in this group.Oral products of ephedrine are classified in R03CA.", "child": {"code": "C01CA27", "desc": "droxidopa", "name": "Adrenergic and dopaminergic agents"}}}
 {"C": {"name": "CARDIOVASCULAR SYSTEM", "desc": "This group comprises substances used for the treatment of cardiovascular conditions.Drugs used for the treatment of hypertension are classified in C02 - Antihypertensives, C03 - Diuretics, C07 - Beta blocking agents, C08 - Calcium channel blockers, and C09 - Agents acting on the renin-angiotensin system. For the classification of combination products of antihypertensives from different ATC groups, the following ranking should be used, from higher to lower precedence: C09, C07, C08, and C03.", "child": {"code": "C10", "name": "LIPID MODIFYING AGENTS", "desc": ""}}, "C10": {"name": "LIPID MODIFYING AGENTS", "desc": "", "child": {"code": "C10AX", "name": "Other lipid modifying agents", "desc": ""}}, "C10AX": {"name": "Other lipid modifying agents", "desc": "", "child": {"code": "C10AX05", "desc": "meglutol", "name": "Other lipid modifying agents"}}}

@@ -22,9 +22,25 @@ out_dir = ensure_directory('output')
 # Define the ATC roots
 atc_roots = ['A', 'B', 'C', 'D', 'G', 'H', 'J', 'L', 'M', 'N', 'P', 'R', 'S', 'V']
 
-atc_code_pattern = re.compile(r'(^[A-Z]$)|(^[A-Z][^a-z][0-9]{1,2}$)|(^[A-Z][^a-z][0-9]{1,2}[A-Z]{1,2}$)|(^[A-Z][^a-z][0-9]{1,2}[A-Z]{1,2}[0-9]{1,2}$)')
+# add root_descriptions to .csv as well
+root_descriptions = {
+    'A': 'Alimentary tract and metabolism.',
+    'B': 'Blood and blood forming organs',
+    'C': 'Cardiovascular system. This group comprises substances used for the treatment of cardiovascular conditions.', 
+    'D': 'Dermatologicals. Most of the drugs in this group are preparations for topical use. Some few preparations for systemic use with dermatological applications',
+    'G': 'Genito urinary system and sex hormones',
+    'H': 'Systemic hormonal preparations, excl. sex hormones and insulins. This group comprises all hormonal preparations for systemic us.',
+    'J': 'Antiinfectives for systemic use',
+    'L': 'Antineoplastic and immunomodulating agents.This group comprises preparations used in the treatment of neoplastic diseases, and immunomodulating agents.',
+    'M': 'Musculo-skeletal system',
+    'N': 'Nervous system',
+    'P': 'Antiparasitic products, insecticides and repellents',
+    'R': 'Respiratory system',
+    'S': 'Sensory organs',
+    'V': 'Various'    
+}
 
-show_desc = "no"
+atc_code_pattern = re.compile(r'(^[A-Z]$)|(^[A-Z][^a-z][0-9]{1,2}$)|(^[A-Z][^a-z][0-9]{1,2}[A-Z]{1,2}$)|(^[A-Z][^a-z][0-9]{1,2}[A-Z]{1,2}[0-9]{1,2}$)')
 
 # Function to validate ATC codes
 def is_valid_atc_code(code):
@@ -40,7 +56,7 @@ def scrape_who_atc(root_atc_code, f_out):
     if not is_valid_atc_code(root_atc_code):
         return
     
-    web_address = f'https://www.whocc.no/atc_ddd_index/?code={root_atc_code}&showdescription={show_desc}'
+    web_address = f'https://www.whocc.no/atc_ddd_index/?code={root_atc_code}&showdescription=yes'
     print('Scraping', web_address)
     atc_code_length = len(root_atc_code)
     response = requests.get(web_address)
@@ -58,13 +74,24 @@ def scrape_who_atc(root_atc_code, f_out):
                 root_atc_code_name = root_atc_code_name_elements[2].get_text()
             else:
                 root_atc_code_name = ''
-            f_out.write('{}\t{}\t\t\t\t\t\n'.format(root_atc_code, root_atc_code_name))
+            f_out.write('{}\t{}\t\t\t\t\t{}\n'.format(root_atc_code, root_atc_code_name, root_descriptions[root_atc_code]))
+        
         # Process higher-level codes
-        content_p = soup.select_one('#content > p:nth-of-type(2n)')
-        if content_p is None:
+        content_p = soup.select('#content > p:nth-of-type(1n)')
+        if len(content_p)==1:
             return
-        scraped_strings = content_p.get_text().split('\n')
+        
+        scraped_strings = content_p[1].get_text().split('\n')
         scraped_strings = [s.strip() for s in scraped_strings if s.strip()]
+        
+        # check for description
+        possible_description = content_p[2].get_text().split('\n')
+        first_characters = re.search(r'^\w+$', possible_description[:8])
+        if is_valid_atc_code(first_characters):
+            description = possible_description
+        else:
+            description = ""
+        
         if not scraped_strings:
             return
         for scraped_string in scraped_strings:
@@ -77,7 +104,7 @@ def scrape_who_atc(root_atc_code, f_out):
                 if not is_valid_atc_code(root_atc_code):
                     return
                 # Write the data to the file
-                f_out.write('{}\t{}\t\t\t\t\t\n'.format(atc_code, atc_name))
+                f_out.write('{}\t{}\t\t\t\t\t{}\n'.format(atc_code, atc_name, description))
                 # Recurse into subcodes
                 scrape_who_atc(atc_code, f_out)
             else:

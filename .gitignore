@@ -5,6 +5,10 @@
 *.db
 *.sas7bdat
 *.sqllite
+*.jsonl
+*.zip
+*.7z
+*.tar
 *.env
 auth/*
 sandbox/*
