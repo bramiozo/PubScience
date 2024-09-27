@@ -342,7 +342,7 @@ As part of Dutch clinical texts
 * [CHEMDNER](https://huggingface.co/datasets/bigbio/chemdner)
 * [BC5CDR](https://huggingface.co/datasets/tner/bc5cdr)
 * [MedMentions](https://github.com/chanzuckerberg/MedMentions)
-* [NCBI disease](https://huggingface.co/datasets/ncbi/ncbi_disease)
+* [NCBI disease](https://huggingface.co/datasets/ncbi/ncbi_disease), and [here](https://huggingface.co/datasets/ncbi/ncbi_disease)
 * [JNLPBA](https://huggingface.co/datasets/jnlpba/jnlpba), [this](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/JNLPBA) seems to be larger
 * [CRAFT](https://github.com/UCDenver-ccp/CRAFT)
 * [CONECO](https://huggingface.co/datasets/bigbio/coneco)
@@ -364,6 +364,7 @@ As part of Dutch clinical texts
 * [cHEBI](https://huggingface.co/datasets/bigbio/chebi_nactem)
 * [AnEm](https://huggingface.co/datasets/bigbio/an_em)
 * [AnatEm](https://huggingface.co/datasets/bigbio/anat_em)
+* [NERO](https://www.nature.com/articles/s41540-021-00200-x)
 
 **Entity classification**
 * [BioScope](https://huggingface.co/datasets/bigbio/bioscope)
