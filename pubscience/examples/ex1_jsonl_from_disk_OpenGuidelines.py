@@ -12,16 +12,18 @@ jsonl_name = Path(jsonl_example).stem
 
 OUTPUT_LOC = os.getenv('ex1_output')
 MAX_NUM_LINES = 37_971
-BATCH_SIZE = 16
+BATCH_SIZE = 4
 USE_GPU = True
 TEXT_IDS = ['title', 'clean_text']
 ID_COLS = ['id', 'source']
-MAX_LENGTH = 496
+MAX_LENGTH = 501
 LONG_TEXTS = True
 
 
 # load translation model
-translator = ntm.TranslationNTM(model_name='vvn/en-to-dutch-marianmt', multilingual=False, max_length=MAX_LENGTH, use_gpu=USE_GPU)
+# single: 'vvn/en-to-dutch-marianmt'
+# multi: 'facebook/nllb-200-distilled-600M'
+translator = ntm.TranslationNTM(model_name='vvn/en-to-dutch-marianmt', multilingual=False, max_length=MAX_LENGTH, use_gpu=USE_GPU, target_lang='nld_Latn')
 
 id_cache = set()
 try:
@@ -59,7 +61,11 @@ with open(jsonl_example, 'r') as file:
                 # Apply your function to the batch here
                 # Example: process_batch(batch)
                 if LONG_TEXTS:
-                    translated_batch = translator.translate_long_batch_v2(batch)
+                    if batch_size>1:
+                        translated_batch = translator.translate_long_batch(batch,
+                            batch_size=32)
+                    else:
+                        translated_batch = [translator.translate_long(batch[0])]
                 else:
                     translated_batch = translator.translate_batch(batch)
                 batch = []
@@ -70,7 +76,7 @@ with open(jsonl_example, 'r') as file:
                     d.update({'approx_token_counts': token_counts[k]})
                     output_list.append(d)
 
-                with open(OUTPUT_LOC, 'a') as output_file:
+                with open(OUTPUT_LOC, 'a', encoding='utf-8') as output_file:
                     for item in output_list:
                         output_file.write(json.dumps(item) + '\n')
 
@@ -85,6 +91,6 @@ with open(jsonl_example, 'r') as file:
         # Example: process_batch(batch)
         translated_batch = translator.translate_batch(batch)
         output_list = [batch_ids[i].update({'text': translated_batch[i]}) for i in range(len(batch_ids))]
-        with open(OUTPUT_LOC, 'a') as output_file:
+        with open(OUTPUT_LOC, 'a', encoding='utf-8') as output_file:
             for item in output_list:
                 output_file.write(json.dumps(item) + '\n')
