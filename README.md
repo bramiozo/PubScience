@@ -313,14 +313,20 @@ As part of Dutch clinical texts
 **Sentence similarity**
 * [WikiMedical sentence similarity](https://huggingface.co/datasets/nuvocare/WikiMedical_sentence_similarity)
 * MedSTS
-* MedNLI
+* [MedNLI](https://huggingface.co/datasets/bigbio/mednli)
 * [SciTail](https://huggingface.co/datasets/bigbio/scitail)
+* [Medical Question Pairs](https://huggingface.co/datasets/bigbio/mqp)
+* [Mediqa RQE](https://huggingface.co/datasets/bigbio/mediqa_rqe)
+* [Mediqa NLI](https://huggingface.co/datasets/bigbio/mediqa_nli)
+* [EHR Rel](https://huggingface.co/datasets/bigbio/ehr_rel)
+* [BIOSSES](https://huggingface.co/datasets/bigbio/biosses)
 
 **Term similarity**
 * [UMNSRS](https://huggingface.co/datasets/bigbio/umnsrs)
   
 **NER**
 
+* [BLURB](https://huggingface.co/datasets/bigbio/blurb)
 * [MultiCardioNER](https://temu.bsc.es/multicardioner/)
 * [DisTEMIST](https://zenodo.org/records/7614764)
 * [SympTEMIST](https://zenodo.org/records/10635215)
@@ -333,9 +339,10 @@ As part of Dutch clinical texts
 * [LivingNER](https://zenodo.org/records/7684093)
 * [BC2GM](https://huggingface.co/datasets/spyysalo/bc2gm_corpus)
 * [BC4CHEMD](https://huggingface.co/datasets/chintagunta85/bc4chemd)
+* [CHEMDNER](https://huggingface.co/datasets/bigbio/chemdner)
 * [BC5CDR](https://huggingface.co/datasets/tner/bc5cdr)
 * [MedMentions](https://github.com/chanzuckerberg/MedMentions)
-* [NCBI disease](https://huggingface.co/datasets/ncbi/ncbi_disease)
+* [NCBI disease](https://huggingface.co/datasets/ncbi/ncbi_disease), and [here](https://huggingface.co/datasets/ncbi/ncbi_disease)
 * [JNLPBA](https://huggingface.co/datasets/jnlpba/jnlpba), [this](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/JNLPBA) seems to be larger
 * [CRAFT](https://github.com/UCDenver-ccp/CRAFT)
 * [CONECO](https://huggingface.co/datasets/bigbio/coneco)
@@ -343,27 +350,47 @@ As part of Dutch clinical texts
 * [S800](https://species.jensenlab.org/)
 * [NLM GENE](https://huggingface.co/datasets/bigbio/nlm_gene)
 * [tmVar](https://huggingface.co/datasets/bigbio/tmvar_v3)
-* [GENIA](https://nlp.stanford.edu/~mcclosky/biomedical.html)
+* [GENIA term](https://nlp.stanford.edu/~mcclosky/biomedical.html), also [see](https://huggingface.co/datasets/bigbio/genia_term_corpus) 
 * [SCAI Disease](https://huggingface.co/datasets/bigbio/scai_disease)
 * [SCAI Chemical](https://huggingface.co/datasets/bigbio/scai_chemical)
 * [NLM WSD](https://huggingface.co/datasets/bigbio/nlm_wsd)
+* [n2c2](https://n2c2.dbmi.hms.harvard.edu/data-sets)
+* [MuchMore](https://huggingface.co/datasets/bigbio/muchmore)
+* [MSH WSD](https://huggingface.co/datasets/bigbio/msh_wsd)
+* [GeneTag](https://huggingface.co/datasets/bigbio/genetag)
+* [EBM PICO](https://huggingface.co/datasets/bigbio/ebm_pico)
+* [DDI ner](https://huggingface.co/datasets/bigbio/ddi_corpus)
+* [Chia](https://huggingface.co/datasets/bigbio/chia)
+* [cHEBI](https://huggingface.co/datasets/bigbio/chebi_nactem)
+* [AnEm](https://huggingface.co/datasets/bigbio/an_em)
+* [AnatEm](https://huggingface.co/datasets/bigbio/anat_em)
+* [NERO](https://www.nature.com/articles/s41540-021-00200-x)
 
 **Entity classification**
-* BIOSSES
- 
+* [BioScope](https://huggingface.co/datasets/bigbio/bioscope)
+
+**De-abbreviation**
+* [MeDAL](https://huggingface.co/datasets/bigbio/medal)
+
 
 **Relationship extraction**
-* [DDI](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/ddi)
+* [DDI re](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/ddi)
 * [ChemProt](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/chemprot)
-* [GAD](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/GAD)
+* [GAD](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/GAD), also [see](https://huggingface.co/datasets/bigbio/gad)
 * [DrugProt](https://huggingface.co/datasets/bigbio/drugprot)
 * [BioRed](https://huggingface.co/datasets/bigbio/biored)
+* [LLL](https://huggingface.co/datasets/bigbio/lll)
+* [GENIA relation](https://huggingface.co/datasets/bigbio/genia_relation_corpus)
+* [BioRelex](https://huggingface.co/datasets/bigbio/biorelex)
+* [BioNLP BB](https://huggingface.co/datasets/bigbio/bionlp_st_2019_bb), [BioNLP PC](https://huggingface.co/datasets/bigbio/bionlp_st_2013_pc), [BioNLP GRO ](https://huggingface.co/datasets/bigbio/bionlp_st_2013_gro), [BioNLP CG](https://huggingface.co/datasets/bigbio/bionlp_st_2013_cg), [BioNLP REL](https://huggingface.co/datasets/bigbio/bionlp_st_2011_rel), [BioNLP EPI](https://huggingface.co/datasets/bigbio/bionlp_st_2011_epi), [BioNLP GE](https://huggingface.co/datasets/bigbio/bionlp_st_2011_ge)
   
 **Document classification**
-* [HoC](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/HoC)
+* [HoC](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/HoC), also [see](https://huggingface.co/datasets/bigbio/hallmarks_of_cancer)
 * [NLMChem](https://huggingface.co/datasets/bigbio/nlmchem)
+* [LitCovid](https://huggingface.co/datasets/bigbio/bc7_litcovid)
 
 **Summarisation**
+* [MeqSum](https://huggingface.co/datasets/bigbio/meqsum)
 
 **Q/A**
 * [BioASQ](http://participants-area.bioasq.org/datasets/)
@@ -371,8 +398,15 @@ As part of Dutch clinical texts
 * [PubMedQA](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/pubmedqa)
 * [SCIq](https://huggingface.co/datasets/bigbio/sciq)
 * [SciFact](https://huggingface.co/datasets/bigbio/scifact)
-
-
+* [Mediqa QA](https://huggingface.co/datasets/bigbio/mediqa_qa)
+* [MedHop](https://huggingface.co/datasets/bigbio/medhop)
+* [MedDialog](https://huggingface.co/datasets/bigbio/meddialog)
+* [Evidence Inference](https://huggingface.co/datasets/bigbio/evidence_inference)
+* [BioMRC](https://huggingface.co/datasets/bigbio/biomrc)
+* [BioHowWhy](https://huggingface.co/datasets/bigbio/biology_how_why_corpus)
+* [BioInfer](https://huggingface.co/datasets/bigbio/bioinfer)
+* [AskAPatient](https://huggingface.co/datasets/bigbio/ask_a_patient)
+  
 ## German
 
 **NER**
@@ -385,6 +419,9 @@ As part of Dutch clinical texts
 **Entity Classification**
 * [NUBes](https://github.com/Vicomtech/NUBes-negation-uncertainty-biomedical-corpus)
 
+**Document Classification**
+* [CODIESP](https://huggingface.co/datasets/bigbio/codiesp)
+* [MESINES](https://huggingface.co/datasets/bigbio/bioasq_2021_mesinesp)
 
 ## Translation of majority language sources
 
