@@ -7,23 +7,25 @@ from tqdm import tqdm
 from pubscience.translate import ntm
 
 dotenv.load_dotenv('.env')
-jsonl_example = os.getenv('JSON_FILE')
-jsonl_name = Path(jsonl_example).stem
+json_example = os.getenv('PubmedPMC')
+json_name = Path(json_example).stem
 
-OUTPUT_LOC = os.getenv('ex1_output')
-MAX_NUM_LINES = 37_971
-BATCH_SIZE = 4
+OUTPUT_LOC = os.getenv('ex4_output')
+BATCH_SIZE = 1
 USE_GPU = True
-TEXT_IDS = ['title', 'clean_text']
-ID_COLS = ['id', 'source']
-MAX_LENGTH = 501
+TEXT_IDS = ['title', 'patient']
+ID_COLS = ['patient_id', 'patient_uid', 'PMID', 'file_path']
+META_COLS = ['age', 'gender']
+MAX_LENGTH = 228
+MAX_NUM_LINES = 167_000
 LONG_TEXTS = True
 
 
 # load translation model
 # single: 'vvn/en-to-dutch-marianmt'
 # multi: 'facebook/nllb-200-distilled-600M'
-translator = ntm.TranslationNTM(model_name='vvn/en-to-dutch-marianmt', multilingual=False, max_length=MAX_LENGTH, use_gpu=USE_GPU, target_lang='nld_Latn')
+translator = ntm.TranslationNTM(model_name='vvn/en-to-dutch-marianmt', multilingual=False,
+                                max_length=MAX_LENGTH, use_gpu=USE_GPU, target_lang='nld_Latn')
 
 id_cache = set()
 try:
@@ -31,7 +33,7 @@ try:
         for line in input_file:
             try:
                 d = json.loads(line)
-                id_cache.add(d['id'])
+                id_cache.add(d['patient_id'])
             except json.JSONDecodeError:
                 print(f"Invalid JSON on line: {line}")
             except KeyError:
@@ -41,20 +43,22 @@ except:
 
 print(f"{len(id_cache)} already in dataset")
 
-with open(jsonl_example, 'r') as file:
-    json_iterator = (json.loads(line) for line in file)
+with open(json_example, 'r') as file:
+    list_of_dicts = json.load(file)
 
     batch_size = BATCH_SIZE
     batch = []
     batch_ids = []
+    meta_vals = []
     output_list = []
-    token_counts = []
-    for line in tqdm(json_iterator, total=MAX_NUM_LINES):
-        if line['id'] not in id_cache:
+    words_counts = []
+    for line in tqdm(list_of_dicts, total=MAX_NUM_LINES):
+        if line['patient_id'] not in id_cache:
             input_text = "\n".join([line[_ID] for _ID in TEXT_IDS])
             batch.append(input_text)
             batch_ids.append({_ID:line[_ID] for _ID in ID_COLS})
-            token_counts.append(1.5*len(input_text.split(" ")))
+            meta_vals.append({_META:line[_META] for _META in META_COLS})
+            words_counts.append(len(input_text.split(" ")))
 
             # TODO: enable short/long batch processing
             if (len(batch) == batch_size):
@@ -68,12 +72,14 @@ with open(jsonl_example, 'r') as file:
                         translated_batch = [translator.translate_long(batch[0])]
                 else:
                     translated_batch = translator.translate_batch(batch)
-                batch = []
 
-                for k, _t in enumerate(translated_batch):
-                    d = batch_ids[k]
-                    d.update({'text': _t})
-                    d.update({'approx_token_counts': token_counts[k]})
+                batch = []
+                for i in range(len(batch_ids)):
+                    d = batch_ids[i].copy()  # Copy the original dictionary to avoid mutating it
+                    d.update({'text': translated_batch[i]})
+                    d.update(meta_vals[i])
+                    d.update({'approx_word_count_original': words_counts[i]})
+                    d.update({'approx_word_count_translated': len(translated_batch[i].split(" "))})
                     output_list.append(d)
 
                 with open(OUTPUT_LOC, 'a', encoding='utf-8') as output_file:
@@ -82,8 +88,9 @@ with open(jsonl_example, 'r') as file:
 
                 batch = []
                 batch_ids = []
+                meta_vals = []
                 output_list = []
-                token_counts = []
+                words_counts = []
 
     # Process any remaining lines in the last batch
     if batch:

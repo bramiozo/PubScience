@@ -7,7 +7,7 @@ from tqdm import tqdm
 from pubscience.translate import ntm
 
 dotenv.load_dotenv('.env')
-text_example = os.getenv('TEXT_FILE')
+text_example = os.getenv('AGCT_FILE')
 text_name = Path(text_example).stem
 
 OUTPUT_LOC = os.getenv('ex2_output')
