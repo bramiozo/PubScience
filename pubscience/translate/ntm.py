@@ -70,6 +70,10 @@ class TranslationNTM:
             self.forced_bos_token_id = None
 
         self.load_model()
+        max_model_length = self.model.config.max_position_embeddings
+        assert(self.max_length <= max_model_length), f"max_length {self.max_length} is greater than the model's max_position_embeddings {max_model_length}."
+        logger.info(f"Model {self.model_name} loaded successfully.")
+        logger.info(f"Model configuration: {self.model.config}")
         self.config = self.model.config
 
 
@@ -177,8 +181,10 @@ class TranslationNTM:
         return all_translated_texts
 
     def _translate_chunk(self, chunk: str) -> str:
-        inputs = self.tokenizer([chunk], return_tensors="pt", truncation=True, max_length=self.max_length).to(self.device)
-        translated = self.model.generate(**inputs, forced_bos_token_id=self.forced_bos_token_id, max_length=self.max_length)
+        # extra params for tokenizer truncation=True, max_length=self.max_length
+        inputs = self.tokenizer([chunk], return_tensors="pt").to(self.device)
+        translated = self.model.generate(**inputs, forced_bos_token_id=self.forced_bos_token_id,
+            max_new_tokens=self.max_length, early_stopping=True)
         return self.tokenizer.batch_decode(translated, skip_special_tokens=True)[0]
 
     def _prepare_chunks(self, sentences: List[str]) -> List[str]:
@@ -186,25 +192,44 @@ class TranslationNTM:
         current_chunk = ""
 
         for sentence in sentences:
-            if len(self.tokenizer.encode(current_chunk + " " + sentence)) <= self.max_length:
-                current_chunk += " " + sentence
+            # Accurate token length calculation
+            sentence_length = len(self.tokenizer.encode(sentence, add_special_tokens=False))
+            if sentence_length > self.max_length:
+                # Split the sentence further
+                words = sentence.split()
+                temp_sentence = ""
+                for word in words:
+                    temp_length = len(self.tokenizer.encode(temp_sentence + " " + word, add_special_tokens=False))
+                    if temp_length <= self.max_length:
+                        temp_sentence += " " + word
+                    else:
+                        chunks.append(temp_sentence.strip())
+                        temp_sentence = word
+                if temp_sentence:
+                    chunks.append(temp_sentence.strip())
             else:
-                if current_chunk:
-                    chunks.append(current_chunk.strip())
-                current_chunk = sentence
+                temp_length = len(self.tokenizer.encode(current_chunk + " " + sentence, add_special_tokens=False))
+                if temp_length <= self.max_length:
+                    current_chunk += " " + sentence
+                else:
+                    if current_chunk:
+                        chunks.append(current_chunk.strip())
+                    current_chunk = sentence
 
         if current_chunk:
             chunks.append(current_chunk.strip())
 
         return chunks
 
+
     def _translate_chunks_batch(self, chunks: List[str], batch_size: int) -> List[str]:
         translated_chunks = []
 
         for i in range(0, len(chunks), batch_size):
             batch_chunks = chunks[i:i + batch_size]
-            inputs = self.tokenizer(batch_chunks, return_tensors="pt", padding=True, truncation=True, max_length=self.max_length).to(self.device)
-            translated = self.model.generate(**inputs, forced_bos_token_id=self.forced_bos_token_id, max_length=self.max_length)
+            # extra params for tokenizer truncation=True, max_length=self.max_length
+            inputs = self.tokenizer(batch_chunks, return_tensors="pt", padding=True).to(self.device)
+            translated = self.model.generate(**inputs, forced_bos_token_id=self.forced_bos_token_id, max_new_tokens=self.max_length, early_stopping=True)
             batch_translations = self.tokenizer.batch_decode(translated, skip_special_tokens=True)
             translated_chunks.extend(batch_translations)
 

@@ -12,7 +12,7 @@ jsonl_name = Path(jsonl_example).stem
 
 OUTPUT_LOC = os.getenv('ex1_output')
 MAX_NUM_LINES = 37_971
-BATCH_SIZE = 4
+BATCH_SIZE = 16
 USE_GPU = True
 TEXT_IDS = ['title', 'clean_text']
 ID_COLS = ['id', 'source']
@@ -23,7 +23,8 @@ LONG_TEXTS = True
 # load translation model
 # single: 'vvn/en-to-dutch-marianmt'
 # multi: 'facebook/nllb-200-distilled-600M'
-translator = ntm.TranslationNTM(model_name='vvn/en-to-dutch-marianmt', multilingual=False, max_length=MAX_LENGTH, use_gpu=USE_GPU, target_lang='nld_Latn')
+translator = ntm.TranslationNTM(model_name='vvn/en-to-dutch-marianmt',
+    multilingual=False, max_length=MAX_LENGTH, use_gpu=USE_GPU, target_lang='nld_Latn')
 
 id_cache = set()
 try:
@@ -63,7 +64,7 @@ with open(jsonl_example, 'r') as file:
                 if LONG_TEXTS:
                     if batch_size>1:
                         translated_batch = translator.translate_long_batch(batch,
-                            batch_size=32)
+                            batch_size=6)
                     else:
                         translated_batch = [translator.translate_long(batch[0])]
                 else:
