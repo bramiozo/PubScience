@@ -16,7 +16,7 @@ BATCH_SIZE = 16
 USE_GPU = True
 TEXT_IDS = ['title', 'clean_text']
 ID_COLS = ['id', 'source']
-MAX_LENGTH = 501
+MAX_LENGTH = 228
 LONG_TEXTS = True
 
 
@@ -55,7 +55,7 @@ with open(jsonl_example, 'r') as file:
             input_text = "\n".join([line[_ID] for _ID in TEXT_IDS])
             batch.append(input_text)
             batch_ids.append({_ID:line[_ID] for _ID in ID_COLS})
-            token_counts.append(1.5*len(input_text.split(" ")))
+            token_counts.append(len(input_text.split(" ")))
 
             # TODO: enable short/long batch processing
             if (len(batch) == batch_size):
@@ -74,7 +74,8 @@ with open(jsonl_example, 'r') as file:
                 for k, _t in enumerate(translated_batch):
                     d = batch_ids[k]
                     d.update({'text': _t})
-                    d.update({'approx_token_counts': token_counts[k]})
+                    d.update({'approx_token_counts_original': token_counts[k]})
+                    d.update({'approx_token_counts_translated': len(_t.split(" "))})
                     output_list.append(d)
 
                 with open(OUTPUT_LOC, 'a', encoding='utf-8') as output_file:
