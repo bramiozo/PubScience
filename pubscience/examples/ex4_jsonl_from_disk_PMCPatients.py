@@ -11,7 +11,7 @@ json_example = os.getenv('PubmedPMC')
 json_name = Path(json_example).stem
 
 OUTPUT_LOC = os.getenv('ex4_output')
-BATCH_SIZE = 1
+BATCH_SIZE = 4
 USE_GPU = True
 TEXT_IDS = ['title', 'patient']
 ID_COLS = ['patient_id', 'patient_uid', 'PMID', 'file_path']
