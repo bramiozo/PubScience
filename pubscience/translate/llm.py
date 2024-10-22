@@ -20,7 +20,7 @@ from pydantic import BaseModel
 
 import argparse
 
-load_dotenv('.env')
+load_dotenv(".env")
 
 """
 This module contains classes to translate annotated and non-annotated corpora.
@@ -39,8 +39,10 @@ class llm_input(BaseModel):
     target_language: str
     text_to_translate: str
 
-    def __str__(self):
-        return "{"+f"'source_language':{self.source_language},'target_language': {self.target_language}, 'text_to_translate': {self.text_to_translate}"+"}"
+    def __str__(self) -> str:
+        return "{" + f"'source_language': '{self.source_language}', 'target_language': '{self.target_language}', 'text_to_translate': '{self.text_to_translate}'" + "}"
+    def __repr__(self) -> str:
+        return self.__str__()
 
 def _get_available_google_models(google_gen) -> List[str]:
     available_models = []
@@ -86,7 +88,7 @@ class TranslationLLM:
 
             AvailableModels = _get_available_google_models(google_gen)
 
-            if model not in AvailableModels:
+            if f"models/{model}" not in AvailableModels:
                 raise ValueError(f"Model {model} not available. Available models are: {AvailableModels}")
 
             self.client = google_gen.GenerativeModel(model_name=model, safety_settings=None, system_instruction=self.system_prompt, generation_config=gGenConfig)
@@ -95,7 +97,7 @@ class TranslationLLM:
 
 
     def translate(self, text: str) -> Dict[str, Any]:
-        InputText = llm_input(source_language=self.source_lang, 
+        InputText = llm_input(source_language=self.source_lang,
                               target_language=self.target_lang,
                               text_to_translate=text)
 
@@ -122,7 +124,7 @@ class TranslationLLM:
                     },
                     {
                         'role': 'user',
-                        'content': InputText
+                        'content': str(InputText)
                     }
                 ]
             )
@@ -140,7 +142,7 @@ class TranslationLLM:
             system= f"{self.system_prompt}",
             messages=[{
                 "role": "user",
-                "content": InputText
+                "content": str(InputText)
             }
             ],
             max_tokens=self.max_tokens
@@ -149,7 +151,7 @@ class TranslationLLM:
 
     def _translate_google(self, InputText: llm_input) -> Dict[str, Any]:
         response = self.client.generate_content(
-            InputText
+            str(InputText)
         )
         return {'translated_text': response.text.strip()}
 
@@ -162,7 +164,7 @@ class TranslationLLM:
                 },
                 {
                     "role": "user",
-                    "content": InputText
+                    "content": str(InputText)
                 }
             ],
             model = self.model
@@ -180,6 +182,10 @@ if __name__ == '__main__':
 
     translator = TranslationLLM(**vars(args))
 
-    text = """Recursion is the process a procedure goes through when one of the steps of the procedure involves invoking the procedure itself. A procedure that goes through recursion is said to be 'recursive'. To understand recursion, one must recognize the distinction between a procedure and the running of a procedure."""
+    text = """Recursion is the process a procedure goes through when one of the steps
+    of the procedure involves invoking the procedure itself.
+    A procedure that goes through recursion is said to be 'recursive'.
+    To understand recursion, one must recognize the distinction between
+    a procedure and the running of a procedure."""
 
     print(translator.translate(text))

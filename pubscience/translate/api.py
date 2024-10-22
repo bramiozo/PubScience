@@ -12,7 +12,6 @@ from functools import lru_cache
 # DeepL: https://www.deepl.com/en/pro-api
 # Google: https://cloud.google.com/translate/pricing
 #
-#
 load_dotenv('.env')
 
 GOOGLE_AUTH_FILE = os.getenv('GOOGLE_AUTH_FILE')
