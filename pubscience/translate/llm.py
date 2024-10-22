@@ -16,6 +16,7 @@ from openai import RateLimitError as openai_RateLimitError
 from groq import Groq
 
 from typing import Optional, Dict, List, Any
+from pydantic import BaseModel
 
 import argparse
 
@@ -32,6 +33,14 @@ Output: {'translated_text': bla,
 """
 
 #TODO: add support for bulk translations, using async methods.
+
+class llm_input(BaseModel):
+    source_language: str
+    target_language: str
+    text_to_translate: str
+
+    def __str__(self):
+        return "{"+f"'source_language':{self.source_language},'target_language': {self.target_language}, 'text_to_translate': {self.text_to_translate}"+"}"
 
 def _get_available_google_models(google_gen) -> List[str]:
     available_models = []
@@ -86,18 +95,22 @@ class TranslationLLM:
 
 
     def translate(self, text: str) -> Dict[str, Any]:
+        InputText = llm_input(source_language=self.source_lang, 
+                              target_language=self.target_lang,
+                              text_to_translate=text)
+
         if self.provider == 'openai':
-            return self._translate_openai(text)
+            return self._translate_openai(InputText)
         elif self.provider == 'anthropic':
-            return self._translate_anthropic(text)
+            return self._translate_anthropic(InputText)
         elif self.provider == 'google':
-            return self._translate_google(text)
+            return self._translate_google(InputText)
         elif self.provider == 'groq':
-            return self._translate_groq(text)
+            return self._translate_groq(InputText)
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")
 
-    def _translate_openai(self, text: str) -> Dict[str, Any]:
+    def _translate_openai(self, InputText: llm_input) -> Dict[str, Any]:
         try:
             response = self.client.chat.completions.create(
                 temperature=0.0,
@@ -109,7 +122,7 @@ class TranslationLLM:
                     },
                     {
                         'role': 'user',
-                        'content': f"Translate from {self.source_lang} to {self.target_lang}: {text}"
+                        'content': InputText
                     }
                 ]
             )
@@ -120,27 +133,27 @@ class TranslationLLM:
 
         return {'translated_text': response.choices[0].message.content.strip()}
 
-    def _translate_anthropic(self, text: str) -> Dict[str, Any]:
+    def _translate_anthropic(self, InputText: llm_input) -> Dict[str, Any]:
         response = self.client.messages.create(
             model=self.model,
             temperature=0.0,
             system= f"{self.system_prompt}",
             messages=[{
                 "role": "user",
-                "content": f"Translate from {self.source_lang} to {self.target_lang}: {text}"
+                "content": InputText
             }
             ],
             max_tokens=self.max_tokens
         )
         return {'translated_text': response.content[0].text.strip()}
 
-    def _translate_google(self, text: str) -> Dict[str, Any]:
+    def _translate_google(self, InputText: llm_input) -> Dict[str, Any]:
         response = self.client.generate_content(
-            f"{self.system_prompt}\nTranslate from {self.source_lang} to {self.target_lang}: {text}"
+            InputText
         )
         return {'translated_text': response.text.strip()}
 
-    def _translate_groq(self, text: str) -> Dict[str, Any]:
+    def _translate_groq(self, InputText: llm_input) -> Dict[str, Any]:
         response = self.client.chat.completions.create(
             messages = [
                 {
@@ -149,7 +162,7 @@ class TranslationLLM:
                 },
                 {
                     "role": "user",
-                    "content": f"{self.system_prompt}\nTranslate from {self.source_lang} to {self.target_lang}: {text}"
+                    "content": InputText
                 }
             ],
             model = self.model
