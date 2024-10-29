@@ -1,5 +1,6 @@
 *.dat
 *.csv
+*.txt
 *.feather
 *.parquet
 *.db
