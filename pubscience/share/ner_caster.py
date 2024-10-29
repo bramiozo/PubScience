@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict, Union
 from collections import defaultdict
 import json
+import argparse
 
 class TAGS(BaseModel):
     start: int
@@ -112,3 +113,23 @@ class NERFormer():
                     f.write(json.dumps(line.dict()) + "\n")
 
         return out_jsonl
+
+
+if __name__=="__main__":
+    parser = argparse.ArgumentParser(description="Transform NER data")
+    parser.add_argument("--ann_dir", type=str, help="Directory with ann files")
+    parser.add_argument("--txt_dir", type=str, help="Directory with txt files")
+    parser.add_argument("--db_path", type=str, help="Path to db file")
+    parser.add_argument("--out_path", type=str, help="Path to output file")
+    parser.add_argument("--name_map", type=str, help="Mapping of column names")
+    parser.add_argument("--write_to_file", type=bool, help="Write to file")
+
+    args = parser.parse_args()
+    name_map = json.loads(args.name_map)
+    ner = NERFormer(ann_dir=args.ann_dir,
+                    txt_dir=args.txt_dir,
+                    db_path=args.db_path,
+                    out_path=args.out_path,
+                    name_map=name_map,
+                    write_to_file=args.write_to_file)
+    ner.transform()
