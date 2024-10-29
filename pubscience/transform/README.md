@@ -13,13 +13,13 @@ newText = TextTransformer.transform(oldText)
 or use a template, such that the incoming text is embedding in a template before it sent to the model.
 
 ```python 
-from pubscience import textTransform 
+from pubscience import transform 
 
 template = """Rewrite this text and structure it as a discharge summary without translation:
 [INPUT]
 and create a version in Dutch. Only return the Dutch version."""
 
-TextTransformer = textTransform(how='llm', model='gpt4o', system_prompt='paraphrase, then translate', template=template)
+TextTransformer = transform.textTransform(how='llm', model='gpt4o', system_prompt='paraphrase, then translate', template=template)
 newText = TextTransformer.transform(oldText)
 ```
 
@@ -33,12 +33,12 @@ template = """Rewrite this text and structure it as a discharge summary without 
 [INPUT]
 and create a version in Dutch preceded by <TRANSLATION>"""
 
-TextTransformer = textTransform(how='llm', model='gpt4o', system_prompt='paraphrase, then translate', template=template)
+TextTransformer = transform.textTransform(how='llm', model='gpt4o', system_prompt='paraphrase, then translate', template=template)
 newTextRAW = TextTransformer.transform(oldText)
 
 newText = TextTransform.extract(by="<TRANSLATION>", how="after")
 ```
 
-and you can chain prompts 
+and you can chain prompts.
 
-...
+

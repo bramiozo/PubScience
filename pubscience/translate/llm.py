@@ -75,8 +75,9 @@ class TranslationLLM:
                 llm_settings = benedict.benedict.from_yaml(settings_loc)
                 self.system_prompt = llm_settings['translation']['method']['llm']['system_prompt']
             except Exception as e:
-                raise FutureWarning(f"Could not parse system_prompt from yaml: {e}.\nContinuing with None")
                 self.system_prompt = None
+                raise FutureWarning(f"Could not parse system_prompt from yaml: {e}.\nContinuing with None")
+                
 
         if provider == 'openai':
             self.client = openai_client(api_key=os.getenv('OPENAI_LLM_API_KEY'))
