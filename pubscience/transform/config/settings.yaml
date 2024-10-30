@@ -15,14 +15,12 @@ transformation:
     - "Translate the text from English to Dutch"
   method:
     llm:
-      provider: google
-      model: models/gemini-1.5-flash
-      batch_size: 16
-      max_tokens: 5048
+      provider: openai #google
+      model: gpt-4o-mini #models/gemini-1.5-flash
+      max_tokens: 4096
       system_prompt: "You are a faithful and truthful translator/paraphraser in the medical/clinical domain. The user query is formatted as a dictionary {'instruction':...,  'text_to_transform':..}, your response should ONLY consist of your transformation"
     ntm:
       model: nllb200
-      batch_size: 16
   source_lang: en
   dest_lang: nl
   write_mode: w

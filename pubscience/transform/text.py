@@ -24,11 +24,14 @@ from groq import Groq
 from typing import Optional, Dict, List, Any, Literal
 from pydantic import BaseModel
 
+import asyncio
+
 from tqdm import tqdm
 import argparse
 
 load_dotenv(".env")
 
+# TODO: add support for bulk translations, using async methods.
 
 class llm_input(BaseModel):
     instruction: str
@@ -53,7 +56,8 @@ class transform():
                  instruction_list: List[str], 
                  provider: Literal['google', 'anthropic', 'openai', 'groq']=None, 
                  model: str=None,
-                 n: int=1, 
+                 n: int=1,
+                 batch_size: int=1, 
                  max_tokens: int=5048):
         
         assert(
@@ -146,6 +150,59 @@ class transform():
             str(InputText), 
         )
         return response.text.strip()
+
+    def __transform_anthropic(self, InputText: llm_input) -> Dict[str, Any]:
+        response = self.client.messages.create(
+            model=self.model,
+            temperature=0.2,
+            system= f"{self.system_prompt}",
+            messages=[{
+                "role": "user",
+                "content": str(InputText)
+            }
+            ],
+            max_tokens=self.max_tokens
+        )
+        return response.content[0].text.strip()
+    
+    def __transform_groq(self, InputText: llm_input) -> Dict[str, Any]:
+        response = self.client.chat.completions.create(
+            messages = [
+                {
+                    "role": "system",
+                    "content": f"{self.system_prompt}"
+                },
+                {
+                    "role": "user",
+                    "content": str(InputText)
+                }
+            ],
+            model = self.model
+        )
+        return response.choices[0].message.content.strip()
+
+    def __transform_openai(self, InputText: llm_input) -> Dict[str, Any]:
+        try:
+            response = self.client.chat.completions.create(
+                temperature=0.2,
+                max_tokens=self.max_tokens,
+                model=self.model,
+                messages=[{
+                        'role': 'system',
+                        'content': f"{self.system_prompt}"
+                    },
+                    {
+                        'role': 'user',
+                        'content': str(InputText)
+                    }
+                ]
+            )
+        except openai_NotFoundError as e:
+            raise ValueError(f"Model {self.model} not found. {e}. Allowable models are: {self.client.models.list()}")
+        except openai_RateLimitError as e:
+            raise ValueError(f"Rate limit reached. {e}")
+
+        return response.choices[0].message.content.strip()
     
 def parse_folder_with_txt(arguments: argparse.Namespace):
     list_of_files = os.listdir(arguments.folder_path)
