@@ -16,10 +16,11 @@ from openai import RateLimitError as openai_RateLimitError
 from groq import Groq
 
 from typing import Optional, Dict, List, Any
+from pydantic import BaseModel
 
 import argparse
 
-load_dotenv('.env')
+load_dotenv(".env")
 
 """
 This module contains classes to translate annotated and non-annotated corpora.
@@ -32,6 +33,16 @@ Output: {'translated_text': bla,
 """
 
 #TODO: add support for bulk translations, using async methods.
+
+class llm_input(BaseModel):
+    source_language: str
+    target_language: str
+    text_to_translate: str
+
+    def __str__(self) -> str:
+        return "{" + f"'source_language': '{self.source_language}', 'target_language': '{self.target_language}', 'text_to_translate': '{self.text_to_translate}'" + "}"
+    def __repr__(self) -> str:
+        return self.__str__()
 
 def _get_available_google_models(google_gen) -> List[str]:
     available_models = []
@@ -64,8 +75,9 @@ class TranslationLLM:
                 llm_settings = benedict.benedict.from_yaml(settings_loc)
                 self.system_prompt = llm_settings['translation']['method']['llm']['system_prompt']
             except Exception as e:
-                raise FutureWarning(f"Could not parse system_prompt from yaml: {e}.\nContinuing with None")
                 self.system_prompt = None
+                raise FutureWarning(f"Could not parse system_prompt from yaml: {e}.\nContinuing with None")
+                
 
         if provider == 'openai':
             self.client = openai_client(api_key=os.getenv('OPENAI_LLM_API_KEY'))
@@ -77,7 +89,7 @@ class TranslationLLM:
 
             AvailableModels = _get_available_google_models(google_gen)
 
-            if model not in AvailableModels:
+            if f"models/{model}" not in AvailableModels:
                 raise ValueError(f"Model {model} not available. Available models are: {AvailableModels}")
 
             self.client = google_gen.GenerativeModel(model_name=model, safety_settings=None, system_instruction=self.system_prompt, generation_config=gGenConfig)
@@ -86,18 +98,22 @@ class TranslationLLM:
 
 
     def translate(self, text: str) -> Dict[str, Any]:
+        InputText = llm_input(source_language=self.source_lang,
+                              target_language=self.target_lang,
+                              text_to_translate=text)
+
         if self.provider == 'openai':
-            return self._translate_openai(text)
+            return self._translate_openai(InputText)
         elif self.provider == 'anthropic':
-            return self._translate_anthropic(text)
+            return self._translate_anthropic(InputText)
         elif self.provider == 'google':
-            return self._translate_google(text)
+            return self._translate_google(InputText)
         elif self.provider == 'groq':
-            return self._translate_groq(text)
+            return self._translate_groq(InputText)
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")
 
-    def _translate_openai(self, text: str) -> Dict[str, Any]:
+    def _translate_openai(self, InputText: llm_input) -> Dict[str, Any]:
         try:
             response = self.client.chat.completions.create(
                 temperature=0.0,
@@ -109,7 +125,7 @@ class TranslationLLM:
                     },
                     {
                         'role': 'user',
-                        'content': f"Translate from {self.source_lang} to {self.target_lang}: {text}"
+                        'content': str(InputText)
                     }
                 ]
             )
@@ -120,27 +136,27 @@ class TranslationLLM:
 
         return {'translated_text': response.choices[0].message.content.strip()}
 
-    def _translate_anthropic(self, text: str) -> Dict[str, Any]:
+    def _translate_anthropic(self, InputText: llm_input) -> Dict[str, Any]:
         response = self.client.messages.create(
             model=self.model,
             temperature=0.0,
             system= f"{self.system_prompt}",
             messages=[{
                 "role": "user",
-                "content": f"Translate from {self.source_lang} to {self.target_lang}: {text}"
+                "content": str(InputText)
             }
             ],
             max_tokens=self.max_tokens
         )
         return {'translated_text': response.content[0].text.strip()}
 
-    def _translate_google(self, text: str) -> Dict[str, Any]:
+    def _translate_google(self, InputText: llm_input) -> Dict[str, Any]:
         response = self.client.generate_content(
-            f"{self.system_prompt}\nTranslate from {self.source_lang} to {self.target_lang}: {text}"
+            str(InputText)
         )
         return {'translated_text': response.text.strip()}
 
-    def _translate_groq(self, text: str) -> Dict[str, Any]:
+    def _translate_groq(self, InputText: llm_input) -> Dict[str, Any]:
         response = self.client.chat.completions.create(
             messages = [
                 {
@@ -149,7 +165,7 @@ class TranslationLLM:
                 },
                 {
                     "role": "user",
-                    "content": f"{self.system_prompt}\nTranslate from {self.source_lang} to {self.target_lang}: {text}"
+                    "content": str(InputText)
                 }
             ],
             model = self.model
@@ -167,6 +183,10 @@ if __name__ == '__main__':
 
     translator = TranslationLLM(**vars(args))
 
-    text = """Recursion is the process a procedure goes through when one of the steps of the procedure involves invoking the procedure itself. A procedure that goes through recursion is said to be 'recursive'. To understand recursion, one must recognize the distinction between a procedure and the running of a procedure."""
+    text = """Recursion is the process a procedure goes through when one of the steps
+    of the procedure involves invoking the procedure itself.
+    A procedure that goes through recursion is said to be 'recursive'.
+    To understand recursion, one must recognize the distinction between
+    a procedure and the running of a procedure."""
 
     print(translator.translate(text))

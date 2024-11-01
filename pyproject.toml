@@ -25,8 +25,13 @@ datasets = "^3.0.0"
 accelerate = "^0.34.2"
 sentencepiece = "^0.2.0"
 nltk = "^3.9.1"
-torch = { version = "2.4.1", source="torch"}
+#torch = { version = "2.4.1", source = "torch" }
+torch = "^2.4.1"
 transformers = "^4.45.1"
+zstandard = "^0.23.0"
+pyreadstat = "^1.2.8"
+sas7bdat = "^2.2.3"
+ell-ai = "^0.0.14"
 
 [tool.poetry.group.dev.dependencies]
 jupyter = "^1.1.1"
@@ -38,5 +43,5 @@ build-backend = "poetry.core.masonry.api"
 
 [[tool.poetry.source]]
 name = "torch"
-url = "https://download.pytorch.org/whl/cu124"
+url = "https://download.pytorch.org/whl/cu121"
 priority = "supplemental"

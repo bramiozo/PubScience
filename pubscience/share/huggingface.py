@@ -44,16 +44,27 @@ def push_to_huggingface(repo_id, dataset_path, card, token, private):
                 raise e
 
     # Upload dataset files
-    for root, _, files in os.walk(dataset_path):
-        for file in files:
-            file_path = os.path.join(root, file)
-            api.upload_file(
-                path_or_fileobj=file_path,
-                path_in_repo=os.path.relpath(file_path, dataset_path),
-                repo_id=repo_id,
-                repo_type=config.repo_type,
-                token=token,
-            )
+    if dataset_path.endswith(".jsonl"):
+        file_path = dataset_path
+        dataset_path = os.path.dirname(dataset_path)
+        api.upload_file(
+            path_or_fileobj=file_path,
+            path_in_repo=os.path.relpath(file_path, dataset_path),
+            repo_id=repo_id,
+            repo_type=config.repo_type,
+            token=token,
+        )
+    else:
+        for root, _, files in os.walk(dataset_path):
+            for file in files:
+                file_path = os.path.join(root, file)
+                api.upload_file(
+                    path_or_fileobj=file_path,
+                    path_in_repo=os.path.relpath(file_path, dataset_path),
+                    repo_id=repo_id,
+                    repo_type=config.repo_type,
+                    token=token,
+                )
 
     # Push dataset card
     card.push_to_hub(
