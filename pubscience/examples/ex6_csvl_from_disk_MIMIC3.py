@@ -4,7 +4,7 @@ from pathlib import Path
 import json
 from tqdm import tqdm
 import pandas as pd
-
+import re # for removing repeated underscores
 from pubscience.translate import ntm
 
 dotenv.load_dotenv('.env')
@@ -13,7 +13,7 @@ csv_example_dir = os.getenv('MIMIC3_folder')
 # list of file
 #
 file_list = os.listdir(csv_example_dir)
-BATCH_SIZE = 64
+BATCH_SIZE = 32
 USE_GPU = True
 TEXT_ID = 'TEXTS'
 ID_COL = 'id'
@@ -21,21 +21,22 @@ META_COLS = ['ICD9_CODES']
 MAX_LENGTH = 228
 LONG_TEXTS = True
 
+# load translation model
+# single: 'vvn/en-to-dutch-marianmt'
+# multi: 'facebook/nllb-200-distilled-600M'
+translator = ntm.TranslationNTM(model_name='vvn/en-to-dutch-marianmt', multilingual=False,
+                max_length=MAX_LENGTH, use_gpu=USE_GPU, target_lang='nld_Latn')
+
 for file in file_list:
     print(f"Processing {file}...")
     csv_name = Path(file).stem
-    name = csv_name.split('.')[0]
-    text_df = pd.read_csv(os.path.join(csv_example_dir, file),
-        sep=",", encoding='latin1')
+    name = file.split('.')[0]
+    text_df = pd.read_csv(os.path.join(csv_example_dir, file), sep=",", encoding='latin1')
 
-    OUTPUT_LOC = os.path.join(os.getenv('ex6_output_folder'), name, ".jsonl")
+    OUTPUT_LOC = os.path.join(os.getenv('ex6_output_folder'), f"{name}.jsonl")
+    print(f"Output location: {OUTPUT_LOC}")
+
     MAX_NUM_LINES = text_df.shape[0]
-
-    # load translation model
-    # single: 'vvn/en-to-dutch-marianmt'
-    # multi: 'facebook/nllb-200-distilled-600M'
-    translator = ntm.TranslationNTM(model_name='vvn/en-to-dutch-marianmt', multilingual=False,
-                    max_length=MAX_LENGTH, use_gpu=USE_GPU, target_lang='nld_Latn')
 
     id_cache = set()
     try:
@@ -64,6 +65,8 @@ for file in file_list:
     for _id, line in tqdm(enumerate(list_of_dicts), total=MAX_NUM_LINES):
         if _id not in id_cache:
             input_text = line[TEXT_ID]
+
+            input_text = re.sub(r'_{2,}', r' ', input_text)
             batch.append(input_text)
             id_dict = {ID_COL:_id}
             id_dict.update({'HADM_ID': line['HADM_ID']})
@@ -78,7 +81,7 @@ for file in file_list:
                 if LONG_TEXTS:
                     if batch_size>1:
                         translated_batch = translator.translate_long_batch(batch,
-                            batch_size=32)
+                            batch_size=24)
                     else:
                         translated_batch = [translator.translate_long(batch[0])]
                 else:
@@ -112,3 +115,6 @@ for file in file_list:
         with open(OUTPUT_LOC, 'a', encoding='utf-8') as output_file:
             for item in output_list:
                 output_file.write(json.dumps(item) + '\n')
+
+    # reset GPU memory/cache
+    translator.reset()

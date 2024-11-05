@@ -86,6 +86,14 @@ class TranslationNTM:
         logger.info(f"Model configuration: {self.model.config}")
         self.config = self.model.config
 
+    def reset(self):
+        """
+            Empty GPU memory/cache
+        """
+        if self.use_gpu:
+            torch.cuda.empty_cache()
+        return True
+
 
     def load_model(self):
             if self.use_gpu:
@@ -224,11 +232,12 @@ class TranslationNTM:
             ).to(self.device)
 
         # Generate translation with specified max_new_tokens
-        translated = self.model.generate(
-            **inputs#,
-            #forced_bos_token_id=self.forced_bos_token_id,
-            #max_new_tokens=self.max_new_tokens  # Set to allow longer outputs
-        )
+        with torch.no_grad():
+            translated = self.model.generate(
+                **inputs#,
+                #forced_bos_token_id=self.forced_bos_token_id,
+                #max_new_tokens=self.max_new_tokens  # Set to allow longer outputs
+            )
 
         return self.tokenizer.decode(translated[0], skip_special_tokens=True)
 
@@ -296,8 +305,9 @@ class TranslationNTM:
         for i in range(0, len(chunks), batch_size):
             batch_chunks = chunks[i:i + batch_size]
             inputs = self.tokenizer(batch_chunks, return_tensors="pt", padding=True, truncation=True, max_length=self.max_length).to(self.device)
-            translated = self.model.generate(**inputs, forced_bos_token_id=self.forced_bos_token_id)
-            batch_translations = self.tokenizer.batch_decode(translated, skip_special_tokens=True)
+            with torch.no_grad():
+                translated = self.model.generate(**inputs, forced_bos_token_id=self.forced_bos_token_id)
+                batch_translations = self.tokenizer.batch_decode(translated, skip_special_tokens=True)
             translated_chunks.extend(batch_translations)
 
         return translated_chunks
@@ -338,8 +348,9 @@ class TranslationNTM:
                 batch_chunks = chunks[i:i + batch_size]
                 batch_texts = [self.tokenizer.decode(chunk_tokens, skip_special_tokens=True) for chunk_tokens in batch_chunks]
                 inputs = self.tokenizer(batch_texts, return_tensors="pt", padding=True, truncation=True, max_length=self.max_length).to(self.device)
-                translated = self.model.generate(**inputs, forced_bos_token_id=self.forced_bos_token_id, max_length=self.max_length)
-                batch_translations = self.tokenizer.batch_decode(translated, skip_special_tokens=True)
+                with torch.no_grad():
+                    translated = self.model.generate(**inputs, forced_bos_token_id=self.forced_bos_token_id, max_length=self.max_length)
+                    batch_translations = self.tokenizer.batch_decode(translated, skip_special_tokens=True)
                 translated_chunks.extend(batch_translations)
 
             # Assemble translated text
@@ -350,11 +361,13 @@ class TranslationNTM:
     def translate_batch(self, texts: List[str]) -> List[str]:
         inputs = self.tokenizer(texts, return_tensors="pt", padding=True, truncation=True).to(self.device)
         if self.multilingual:
-            outputs = self.model.generate(**inputs,
-                forced_bos_token_id=self.forced_bos_token_id,
-                max_length=self.max_length)
+            with torch.no_grad():
+                outputs = self.model.generate(**inputs,
+                    forced_bos_token_id=self.forced_bos_token_id,
+                    max_length=self.max_length)
         else:
-            outputs = self.model.generate(**inputs, max_length=self.max_length)
+            with torch.no_grad():
+                outputs = self.model.generate(**inputs, max_length=self.max_length)
         translated_texts = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
         return translated_texts
 
@@ -368,7 +381,7 @@ if __name__ == "__main__":
     print("*"*50)
 
     print("Monolingual test...")
-    ntm = TranslationNTM(model='Helsinki-NLP/opus-mt-en-ru')
+    ntm = TranslationNTM(model_name='Helsinki-NLP/opus-mt-en-ru')
     text = "I love you my dearest Maria."
     translated_text = ntm.translate(text)
     print("*"*50)
@@ -376,7 +389,7 @@ if __name__ == "__main__":
     print("*"*50)
 
     print("Monolingual test long")
-    ntm = TranslationNTM(model='Helsinki-NLP/opus-mt-en-ru')
+    ntm = TranslationNTM(model_name='Helsinki-NLP/opus-mt-en-ru')
     text = """To be competitive on the free market there is little place for morality. Morally questioning your decisionmaking slows down the decision making, leads to economically sub-optimal results as morality is not rewarded in the short term, and unfortunately free-market capitalism is all about short term gains. This focus on short-term gains and predictable risk leads to risk aversion and an almost neurotic focus on the existing markets, i.e. free market capitalism does not lead to innovation because it is inherently conservative. The risks that entrepreneurs take are very real in an economic sense but trivial in an intellectual sense, because true radical innovation is unpredictable. That is why even huge conglomerates hardly produce radical innovation despite sitting on tens of billions of dollars of R&D budget. 
     Free market capitalism is not just amoral it is also inhumane: e.g. if the goal is maximisation of profit then working hours are increased until the productivity per labor cost no longer increases, regardless of the human cost.
     In the mean time labor markets are relatively opaque for the workers who are completely dependent on a job for their basic survival. Hence, in a tight labor market, the negotiation position of the worker is very weak and even non-existent if push comes to shove and there is no public safety net. This naturally drives the overall labor conditions, including wages, down.
