@@ -3,7 +3,7 @@ Text transformation functions.
 
 Write functions to transform text with LLMs
 
-A -> transform(A, InstructionForParaphrasing, n=1) -> transform(_, InstructionForTranslation, n=1) 
+A -> transform(A, InstructionForParaphrasing, n=1) -> transform(_, InstructionForTranslation, n=1)
 """
 
 from typing import List
@@ -51,15 +51,15 @@ def _get_available_google_models(google_gen) -> List[str]:
 
 
 class transform():
-    def __init__(self, 
-                 system_prompt: str, 
-                 instruction_list: List[str], 
-                 provider: Literal['google', 'anthropic', 'openai', 'groq']=None, 
-                 model: str=None,
+    def __init__(self,
+                 system_prompt: str,
+                 instruction_list: List[str],
+                 provider: Literal['google', 'anthropic', 'openai', 'groq']=None,
+                 model: str|None=None,
                  n: int=1,
-                 batch_size: int=1, 
+                 batch_size: int=1,
                  max_tokens: int=5048):
-        
+
         assert(
             provider in ['google', 'anthropic', 'openai', 'groq']
         ), f"Provider {provider} not supported. Supported providers are: ['google', 'anthropic', 'openai', 'groq']"
@@ -72,8 +72,8 @@ class transform():
 
         settings_loc = os.getenv('SETTINGS_YAML')
         llm_settings = benedict.benedict.from_yaml(settings_loc)
-        
-        
+
+
         # TODO: add support for n>1
         if n>1:
             n = 1
@@ -97,7 +97,7 @@ class transform():
             except Exception as e:
                 self.model = None
                 raise ValueError(f"Could not parse model from yaml: {e}. Please identify an available model from the provider.")
-            
+
         if isinstance(instruction_list, list) and all(isinstance(i, str) for i in instruction_list):
             self.instruction_list = instruction_list
         else:
@@ -121,12 +121,16 @@ class transform():
         elif provider == 'groq':
             self.client = Groq(api_key=os.getenv('GROQ_LLM_API_KEY'))
 
+        #self.write_per_instruction = llm_settings.get('transformation').get('out_per_instruction', False)
+        self.intermediate_outputs = []
 
     def __call__(self, text: str):
+        self.intermediate_outputs = []
         for instruction in self.instruction_list:
             text = self._transform(text, instruction)
+            self.intermediate_outputs.append(text)
         return text
-    
+
     def _transform(self, text: str, instruction: str):
         InputText = llm_input(instruction=instruction,
                             text_to_transform=text)
@@ -141,13 +145,13 @@ class transform():
             return self.__transform_groq(InputText)
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")
-        
-    
+
+
     def __transform_google(self, InputText: llm_input) -> Dict[str, Any]:
         # TODO: if self.n>1, this will return a list of responses...
         # TODO: the number of total outcome then becomes n^numInstructions, perhaps not what we want? :D
         response = self.client.generate_content(
-            str(InputText), 
+            str(InputText),
         )
         return response.text.strip()
 
@@ -164,7 +168,7 @@ class transform():
             max_tokens=self.max_tokens
         )
         return response.content[0].text.strip()
-    
+
     def __transform_groq(self, InputText: llm_input) -> Dict[str, Any]:
         response = self.client.chat.completions.create(
             messages = [
@@ -203,7 +207,7 @@ class transform():
             raise ValueError(f"Rate limit reached. {e}")
 
         return response.choices[0].message.content.strip()
-    
+
 def parse_folder_with_txt(arguments: argparse.Namespace):
     list_of_files = os.listdir(arguments.folder_path)
     transformations = []
@@ -227,11 +231,12 @@ def parse_folder_with_txt(arguments: argparse.Namespace):
                 trans = transformer(text)
                 transformations.append((fname, trans))
 
-            out_path = os.path.join(arguments.output_folder, fname.replace(".txt", "_transformed.txt"))
-            with open(out_path, 'w', encoding='utf-8') as f:
-                f.write(trans)
+            for k, _trans in enumerate(transformer.intermediate_outputs):
+                out_path = os.path.join(arguments.output_folder, fname.replace(".txt", f"_transformed_step{k+1}.txt"))
+                with open(out_path, 'w', encoding='utf-8') as f:
+                    f.write(_trans)
 
-            
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Transform text using LLMs')

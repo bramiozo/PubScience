@@ -1,6 +1,9 @@
 *.dat
+*.ann
 *.csv
 *.txt
+.DS_Store
+.pyc
 *.feather
 *.parquet
 *.db
@@ -8,6 +11,7 @@
 *.sqllite
 *.jsonl
 *.zip
+*.tsv
 *.7z
 *.tar
 *.env
