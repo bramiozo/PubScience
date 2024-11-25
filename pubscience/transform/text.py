@@ -212,7 +212,7 @@ def parse_folder_with_txt(arguments: argparse.Namespace):
     list_of_files = os.listdir(arguments.folder_path)
     transformations = []
 
-    already_parsed = [fn.replace("_transformed", "") for fn in os.listdir(arguments.output_folder)]
+    already_parsed = [fn.replace("_transformed", "").replace("_step1", "").replace("_step2", "") for fn in os.listdir(arguments.output_folder)]
 
     for fname in tqdm(list_of_files):
         if fname in already_parsed:
