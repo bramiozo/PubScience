@@ -45,7 +45,7 @@ class NERFormer():
         db_path: str | None,
         out_path: str | None,
         name_map: NameMap | None,
-        write_to_file: bool = False):
+        write_to_file: bool = True):
 
         self.ann_dir = ann_dir
         self.txt_dir = txt_dir
