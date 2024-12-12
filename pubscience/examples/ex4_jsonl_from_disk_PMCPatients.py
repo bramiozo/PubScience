@@ -11,7 +11,7 @@ json_example = os.getenv('PubmedPMC')
 json_name = Path(json_example).stem
 
 OUTPUT_LOC = os.getenv('ex4_output')
-BATCH_SIZE = 4
+BATCH_SIZE = 24
 USE_GPU = True
 TEXT_IDS = ['title', 'patient']
 ID_COLS = ['patient_id', 'patient_uid', 'PMID', 'file_path']
@@ -24,7 +24,7 @@ LONG_TEXTS = True
 # load translation model
 # single: 'vvn/en-to-dutch-marianmt'
 # multi: 'facebook/nllb-200-distilled-600M'
-translator = ntm.TranslationNTM(model_name='vvn/en-to-dutch-marianmt', multilingual=False,
+translator = ntm.TranslationNTM(model_name='facebook/nllb-200-distilled-600M', multilingual=True,
                                 max_length=MAX_LENGTH, use_gpu=USE_GPU, target_lang='nld_Latn')
 
 id_cache = set()
