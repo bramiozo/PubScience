@@ -25,7 +25,9 @@ from typing import Optional, Dict, List, Any, Literal
 from pydantic import BaseModel
 
 import asyncio
+from time import sleep
 
+import json
 from tqdm import tqdm
 import argparse
 
@@ -150,10 +152,17 @@ class transform():
     def __transform_google(self, InputText: llm_input) -> Dict[str, Any]:
         # TODO: if self.n>1, this will return a list of responses...
         # TODO: the number of total outcome then becomes n^numInstructions, perhaps not what we want? :D
-        response = self.client.generate_content(
-            str(InputText),
-        )
-        return response.text.strip()
+        try:
+            response = self.client.generate_content(
+                str(InputText),
+            )
+            if response.parts:
+                return response.text.strip()
+
+            else:
+                return f"No response from Google LLM.<ERROR>{str(response)}</ERROR>"
+        except:
+            raise ValueError(f"Could not transform text with Google LLM for {InputText}")
 
     def __transform_anthropic(self, InputText: llm_input) -> Dict[str, Any]:
         response = self.client.messages.create(
@@ -236,6 +245,44 @@ def parse_folder_with_txt(arguments: argparse.Namespace):
                 with open(out_path, 'w', encoding='utf-8') as f:
                     f.write(_trans)
 
+def parse_json(arguments: argparse.Namespace):
+    try:
+        input_file_name = os.path.splitext(os.path.basename(arguments.input_path))[0]
+        out_path = os.path.join(arguments.output_folder, f"{input_file_name}_{arguments.model}.jsonl")
+        with open(out_path, 'r', encoding='utf-8') as f:
+            list_of_dicts = [json.loads(d) for d in f.readlines()]
+            id_cache = [d[arguments.id_field] for d in list_of_dicts]
+    except Exception as e:
+        id_cache = []
+        print(f"First run for this input file, continuing with {out_path}. Errpr: {e}")
+
+    with open(arguments.input_path, 'r', encoding='utf-8') as f:
+        list_of_dicts = json.load(f)
+
+        transformer = transform(
+                        system_prompt=arguments.system_prompt if arguments.system_prompt else None,
+                        instruction_list=arguments.instruction_list.split(",") if arguments.instruction_list else None,
+                        provider=arguments.provider,
+                        model=arguments.model,
+                        n=arguments.n,
+                        max_tokens=arguments.max_tokens)
+
+        for d in tqdm(list_of_dicts):
+            text = d[arguments.text_field]
+            id = d[arguments.id_field]
+
+            if id in id_cache:
+                continue
+
+            _ = transformer(text)
+
+            input_file_name = os.path.splitext(os.path.basename(arguments.input_path))[0]
+            out_path = os.path.join(arguments.output_folder, f"{input_file_name}_{arguments.model}.jsonl")
+            with open(out_path, 'a', encoding='utf-8') as f:
+                for k, _trans in enumerate(transformer.intermediate_outputs):
+                    json_line = json.dumps({arguments.id_field: id, "k": k, "transformed_text": _trans})
+                    f.write(json_line + "\n")
+            sleep(1)
 
 
 if __name__ == '__main__':
@@ -247,14 +294,22 @@ if __name__ == '__main__':
     parser.add_argument('--n', type=int, help='Number of instructions to apply', default=1)
     parser.add_argument('--max_tokens', type=int, help='Maximum tokens for the LLM', default=5048)
     parser.add_argument('--folder_path', type=str, help='Path to folder with .txt files', default=None)
+    parser.add_argument('--input_path', type=str, help='Path to input json', default=None)
+    parser.add_argument('--text_field', type=str, help='Field in json to transform', default='patient')
+    parser.add_argument('--id_field', type=str, help='Field in json to transform', default='patient_uid')
     parser.add_argument('--output_folder', type=str, help='Path to output folder', default=None)
     args = parser.parse_args()
 
+    assert(args.folder_path is None or args.input_path is None), "Please provide either a folder path or an input path, or none"
 
     if args.folder_path:
         if not args.output_folder:
             raise ValueError("Please provide an output folder")
         parse_folder_with_txt(args)
+    elif args.input_path:
+        if not args.output_folder:
+            raise ValueError("Please provide an output folder")
+        parse_json(args)
     else:
         transformer = transform(
             system_prompt=args.system_prompt if args.system_prompt else None,

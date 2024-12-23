@@ -7,14 +7,14 @@ from tqdm import tqdm
 from pubscience.translate import ntm
 
 dotenv.load_dotenv('.env')
-json_example = os.getenv('Apollo_guidelines')
+json_example = os.getenv('Apollo_books')
 json_name = Path(json_example).stem
 
-OUTPUT_LOC = os.getenv('ex9_output_folder')
-MAX_NUM_LINES = 99_687
-BATCH_SIZE = 32
+OUTPUT_LOC = os.getenv('ex10_output_folder')
+MAX_NUM_LINES = 553_009
+BATCH_SIZE = 8
 USE_GPU = True
-MAX_LENGTH = 228
+MAX_LENGTH = 411 # 456 for nllb-200-distilled-600M, 228 for maria-nmt
 LONG_TEXTS = True
 
 
@@ -78,19 +78,29 @@ with open(json_example, 'r') as file:
 
                 with open(OUTPUT_LOC, 'a', encoding='utf-8') as output_file:
                     for item in output_list:
-                        output_file.write(json.dumps(item) + '\n')
+                        output_file.write(json.dumps(item, ensure_ascii=False) + '\n')
 
                 batch = []
                 batch_ids = []
                 output_list = []
                 token_counts = []
 
-    # Process any remaining lines in the last batch
-    if batch:
-        # Apply your function to the batch here
-        # Example: process_batch(batch)
+if batch:
+    if LONG_TEXTS:
+        if batch_size > 1:
+            translated_batch = translator.translate_long_batch(batch, batch_size=32)
+        else:
+            translated_batch = [translator.translate_long(batch[0])]
+    else:
         translated_batch = translator.translate_batch(batch)
-        output_list = [batch_ids[i].update({'text': translated_batch[i]}) for i in range(len(batch_ids))]
-        with open(OUTPUT_LOC, 'a', encoding='utf-8') as output_file:
-            for item in output_list:
-                output_file.write(json.dumps(item) + '\n')
+
+    for i, translated_text in enumerate(translated_batch):
+        d = batch_ids[i]
+        d.update({'text': translated_text})
+        d.update({'approx_token_counts_original': token_counts[i]})
+        d.update({'approx_token_counts_translated': len(translated_text.split(" "))})
+        output_list.append(d)
+
+    with open(OUTPUT_LOC, 'a', encoding='utf-8') as output_file:
+        for item in output_list:
+            output_file.write(json.dumps(item, ensure_ascii=False) + '\n')

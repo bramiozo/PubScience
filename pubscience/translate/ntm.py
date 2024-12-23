@@ -7,6 +7,7 @@ from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, AutoConfig
 import torch
 from typing import List, Literal, Dict, Tuple, Any
 import nltk
+import pysbd
 import re
 nltk.download('punkt_tab')
 
@@ -33,9 +34,11 @@ class TranslationNTM:
                  provider: Literal['huggingface', 'local']='huggingface',
                  source_lang: str='eng_Latn',  # Source language code
                  target_lang: str='nld_Latn',  # Target language code
-                 max_length: int=228
+                 max_length: int=228,
+                 sentence_splitter: Literal['nltk', 'pysbd']='pysbd',
                  #max_new_tokens: int=256
                  ):
+        self.sentence_splitter = sentence_splitter
         self.model_name = model_name
         self.multilingual = multilingual
         self.use_gpu = use_gpu
@@ -80,7 +83,10 @@ class TranslationNTM:
             self.forced_bos_token_id = None
 
         self.load_model()
-        max_model_length = self.model.config.max_position_embeddings
+        max_model_length = getattr(self.model.config, 'max_position_embeddings', None) or \
+                            getattr(self.model.config, 'max_length', None)  \
+                            or getattr(self.model.config, 'n_positions', None)
+        assert(max_model_length is not None), "Model does not have max_position_embeddings, max_length or n_positions attribute."
         assert(self.max_length <= max_model_length), f"max_length {self.max_length} is greater than the model's max_position_embeddings {max_model_length}."
         logger.info(f"Model {self.model_name} loaded successfully.")
         logger.info(f"Model configuration: {self.model.config}")
@@ -150,8 +156,14 @@ class TranslationNTM:
         return translated_text
 
     def translate_long(self, text: str) -> str:
-        nltk.download('punkt', quiet=True)
-        sentences = nltk.sent_tokenize(text, language='english')
+        if self.sentence_splitter == 'nltk':
+            nltk.download('punkt', quiet=True)
+            sentences = nltk.sent_tokenize(text, language='english')
+        elif self.sentence_splitter == 'pysbd':
+            seg = pysbd.Segmenter(language="en")
+            sentences = seg.segment(text)
+        else:
+            raise ValueError("Unsupported sentence splitter. Choose either 'nltk' or 'pysbd'.")
         translated_sentences = []
         current_chunk = ""
 
@@ -164,7 +176,8 @@ class TranslationNTM:
                     current_chunk_length = len(self.tokenizer.encode(current_chunk + " " + sub_sentence,
                                                                      add_special_tokens=False))
                     if current_chunk_length <= self.max_length:
-                        current_chunk += " " + sub_sentence
+                        current_chunk = f"{current_chunk} {sub_sentence}".strip()
+
                     else:
                         if current_chunk:
                             translated_chunk = self._translate_chunk(current_chunk.strip())
@@ -173,7 +186,8 @@ class TranslationNTM:
             else:
                 current_chunk_length = len(self.tokenizer.encode(current_chunk + " " + sentence, add_special_tokens=False))
                 if current_chunk_length <= self.max_length:
-                    current_chunk += " " + sentence
+                    current_chunk = f"{current_chunk} {sentence}".strip()
+
                 else:
                     if current_chunk:
                         translated_chunk = self._translate_chunk(current_chunk.strip())
@@ -197,7 +211,7 @@ class TranslationNTM:
         sub_sentences = []
         current_sub_sentence = ""
         for word in words:
-            sub_sentence_length = len(self.tokenizer.encode(current_sub_sentence + " " + word))
+            sub_sentence_length = len(self.tokenizer.encode(current_sub_sentence + " " + word, add_special_tokens=False))
             if sub_sentence_length <= self.max_length:
                 current_sub_sentence += " " + word
             else:
@@ -234,9 +248,7 @@ class TranslationNTM:
         # Generate translation with specified max_new_tokens
         with torch.no_grad():
             translated = self.model.generate(
-                **inputs#,
-                #forced_bos_token_id=self.forced_bos_token_id,
-                #max_new_tokens=self.max_new_tokens  # Set to allow longer outputs
+                **inputs,
             )
 
         return self.tokenizer.decode(translated[0], skip_special_tokens=True)
@@ -313,11 +325,19 @@ class TranslationNTM:
         return translated_chunks
 
     def translate_long_batch_v2(self, texts: List[str], batch_size: int = 8) -> List[str]:
-        nltk.download('punkt', quiet=True)
+        if self.sentence_splitter == 'nltk':
+            nltk.download('punkt', quiet=True)
+        elif self.sentence_splitter == 'pysbd':
+            seg = pysbd.Segmenter(language="en")
+        else:
+            raise ValueError("Unsupported sentence splitter. Choose either 'nltk' or 'pysbd'.")
 
         output_texts = []
         for text in texts:
-            sentences = nltk.sent_tokenize(text)
+            if self.sentence_splitter == 'nltk':
+                sentences = nltk.sent_tokenize(text, language='english')
+            elif self.sentence_splitter == 'pysbd':
+                sentences = seg.segment(text)
             chunks = []
             current_chunk_tokens = []
             current_length = 0
