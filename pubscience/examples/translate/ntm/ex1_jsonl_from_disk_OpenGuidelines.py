@@ -7,29 +7,28 @@ from tqdm import tqdm
 from pubscience.translate import ntm
 
 dotenv.load_dotenv('.env')
-json_example = os.getenv('Apollo_books')
-json_name = Path(json_example).stem
+jsonl_example = os.getenv('JSON_FILE')
+jsonl_name = Path(jsonl_example).stem
 
-OUTPUT_LOC = os.getenv('ex10_output_folder')
-MAX_NUM_LINES = 553_009
-BATCH_SIZE = 8
-INNER_BATCH_SIZE = 8
+OUTPUT_LOC = os.getenv('ex1_output')
+MAX_NUM_LINES = 37_971
+BATCH_SIZE = 16
 USE_GPU = True
-MAX_LENGTH = 128 # 456 for nllb-200-distilled-600M, 228 for maria-nmt
+TEXT_IDS = ['title', 'clean_text']
+ID_COLS = ['id', 'source']
+MAX_LENGTH = 228
 LONG_TEXTS = True
-USE_QUANTISATION = False
+
 
 # load translation model
 # single: 'vvn/en-to-dutch-marianmt'
 # multi: 'facebook/nllb-200-distilled-600M'
-#translator = ntm.TranslationNTM(model_name='facebook/nllb-200-distilled-600M',
-#    multilingual=True, max_length=MAX_LENGTH, use_gpu=USE_GPU, target_lang='nld_Latn', #use_quantisation=USE_QUANTISATION)
 translator = ntm.TranslationNTM(model_name='vvn/en-to-dutch-marianmt',
     multilingual=False, max_length=MAX_LENGTH, use_gpu=USE_GPU, target_lang='nld_Latn')
 
 id_cache = set()
 try:
-    with open(OUTPUT_LOC, 'r', encoding='utf-8') as input_file:
+    with open(OUTPUT_LOC, 'r') as input_file:
         for line in input_file:
             try:
                 d = json.loads(line)
@@ -43,19 +42,19 @@ except:
 
 print(f"{len(id_cache)} already in dataset")
 
-with open(json_example, 'r') as file:
-    docs = file.readlines()
+with open(jsonl_example, 'r') as file:
+    json_iterator = (json.loads(line) for line in file)
 
     batch_size = BATCH_SIZE
     batch = []
     batch_ids = []
     output_list = []
     token_counts = []
-    for doc_count, line in tqdm(enumerate(docs), total=MAX_NUM_LINES):
-        if doc_count not in id_cache:
-            input_text = line
+    for line in tqdm(json_iterator, total=MAX_NUM_LINES):
+        if line['id'] not in id_cache:
+            input_text = "\n".join([line[_ID] for _ID in TEXT_IDS])
             batch.append(input_text)
-            batch_ids.append({'id': doc_count})
+            batch_ids.append({_ID:line[_ID] for _ID in ID_COLS})
             token_counts.append(len(input_text.split(" ")))
 
             # TODO: enable short/long batch processing
@@ -65,7 +64,7 @@ with open(json_example, 'r') as file:
                 if LONG_TEXTS:
                     if batch_size>1:
                         translated_batch = translator.translate_long_batch(batch,
-                            batch_size=INNER_BATCH_SIZE)
+                            batch_size=6)
                     else:
                         translated_batch = [translator.translate_long(batch[0])]
                 else:
@@ -81,29 +80,19 @@ with open(json_example, 'r') as file:
 
                 with open(OUTPUT_LOC, 'a', encoding='utf-8') as output_file:
                     for item in output_list:
-                        output_file.write(json.dumps(item, ensure_ascii=False) + '\n')
+                        output_file.write(json.dumps(item) + '\n')
 
                 batch = []
                 batch_ids = []
                 output_list = []
                 token_counts = []
 
-if batch:
-    if LONG_TEXTS:
-        if batch_size > 1:
-            translated_batch = translator.translate_long_batch(batch, batch_size=INNER_BATCH_SIZE)
-        else:
-            translated_batch = [translator.translate_long(batch[0])]
-    else:
+    # Process any remaining lines in the last batch
+    if batch:
+        # Apply your function to the batch here
+        # Example: process_batch(batch)
         translated_batch = translator.translate_batch(batch)
-
-    for i, translated_text in enumerate(translated_batch):
-        d = batch_ids[i]
-        d.update({'text': translated_text})
-        d.update({'approx_token_counts_original': token_counts[i]})
-        d.update({'approx_token_counts_translated': len(translated_text.split(" "))})
-        output_list.append(d)
-
-    with open(OUTPUT_LOC, 'a', encoding='utf-8') as output_file:
-        for item in output_list:
-            output_file.write(json.dumps(item, ensure_ascii=False) + '\n')
+        output_list = [batch_ids[i].update({'text': translated_batch[i]}) for i in range(len(batch_ids))]
+        with open(OUTPUT_LOC, 'a', encoding='utf-8') as output_file:
+            for item in output_list:
+                output_file.write(json.dumps(item) + '\n')

@@ -34,6 +34,7 @@ sas7bdat = "^2.2.3"
 ell-ai = "^0.0.14"
 lxml = "^5.3.0"
 pysbd = "^0.3.4"
+bitsandbytes = "^0.45.0"
 
 [tool.poetry.group.dev.dependencies]
 jupyter = "^1.1.1"
