@@ -91,12 +91,15 @@ class DeepLProvider(TranslationProvider):
                         source_language: str,
                         target_language: str) -> str:
 
-        glossary = tuple_to_dict(glossary_tuple)
-        # Create a regular expression pattern for glossary terms
-        self.pattern = '|'.join(map(re.escape, glossary.keys()))
-
-        # Split the text into translatable and non-translatable parts
-        parts = re.split(f'({self.pattern})', chunk)
+        if len(glossary_tuple)==0:
+            parts = [chunk]
+            glossary = []
+        else:
+            glossary = tuple_to_dict(glossary_tuple)
+            # Create a regular expression pattern for glossary terms
+            self.pattern = '|'.join(map(re.escape, glossary.keys()))
+            # Split the text into translatable and non-translatable parts
+            parts = re.split(f'({self.pattern})', chunk)
 
         translated_parts = []
         for part in parts:
@@ -185,12 +188,7 @@ class GoogleTranslateProvider(TranslationProvider):
                          source_language: str,
                          target_language: str) -> str:
 
-        glossary = tuple_to_dict(glossary_tuple)
-        # Create a regular expression pattern for glossary terms
-        self.pattern = '|'.join(map(re.escape, glossary.keys()))
 
-        # Split the text into translatable and non-translatable parts
-        parts = re.split(f'({self.pattern})', chunk)
 
         translated_parts = []
         for part in parts:
