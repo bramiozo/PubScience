@@ -8,7 +8,9 @@ import time
 import deepl
 import re
 import os
-from functools import lru_cache
+import sqlite3
+import pysbd
+import requests
 
 # DeepL: https://www.deepl.com/en/pro-api
 # Google: https://cloud.google.com/translate/pricing
@@ -43,7 +45,8 @@ class DeepLProvider(TranslationProvider):
         self.translator = deepl.Translator(api_key)
         self.max_chunk_size = max_chunk_size
 
-    @lru_cache(maxsize=128_000)
+
+
     def translate(self,
                 text: str,
                 glossary_tuple: Tuple[Tuple[str, str], ...],
@@ -84,7 +87,6 @@ class DeepLProvider(TranslationProvider):
 
         return translated_text
 
-    @lru_cache(maxsize=128_000)
     def _translate_chunk(self,
                         chunk: str,
                         glossary_tuple: Tuple[Tuple[str, str], ...],
@@ -141,7 +143,6 @@ class GoogleTranslateProvider(TranslationProvider):
             client = translate.TranslationServiceClient(credentials=credentials)
         return client
 
-    @lru_cache(maxsize=128_000)
     def translate(self,
                   text: str,
                   glossary_tuple: Tuple[Tuple[str, str], ...],
@@ -181,14 +182,21 @@ class GoogleTranslateProvider(TranslationProvider):
 
         return translated_text
 
-    @lru_cache(maxsize=128_000)
     def _translate_chunk(self,
                          chunk: str,
                          glossary_tuple: Tuple[Tuple[str, str], ...],
                          source_language: str,
                          target_language: str) -> str:
 
-
+        if len(glossary_tuple)==0:
+            parts = [chunk]
+            glossary = []
+        else:
+            glossary = tuple_to_dict(glossary_tuple)
+            # Create a regular expression pattern for glossary terms
+            self.pattern = '|'.join(map(re.escape, glossary.keys()))
+            # Split the text into translatable and non-translatable parts
+            parts = re.split(f'({self.pattern})', chunk)
 
         translated_parts = []
         for part in parts:
@@ -243,6 +251,32 @@ class TranslationAPI:
                                                     max_chunk_size=max_chunk_size)
         else:
             raise ValueError("Unsupported provider. Use 'deepl' or 'google'.")
+
+        # Connect to the SQLite database for persistent caching
+        self.conn = sqlite3.connect('translations.db')
+        self.cursor = self.conn.cursor()
+
+        # Create a table for caching translations
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS translations (
+                sentence TEXT,
+                translated_text TEXT,
+                source_language TEXT,
+                target_language TEXT,
+                PRIMARY KEY (sentence, source_language, target_language)
+            )
+        ''')
+        self.conn.commit()
+
+    def get_cached_translation(self, sentence: str):
+        self.cursor.execute('SELECT translated_text FROM translations WHERE sentence = ?, source_language = ?, target_language = ?', (sentence, self.source_language, self.target_language))
+        result = self.cursor.fetchone()
+        return result[0] if result else None
+
+    def cache_translation(self, sentence: str, translated_text: str):
+        self.cursor.execute('INSERT OR REPLACE INTO translations (sentence, translated_text, source_language, target_language) VALUES (?, ?, ?, ?)',
+            (sentence.lower(), translated_text))
+        self.conn.commit()
 
     def translate(self, text: str) -> str:
         glossary_tuple = dict_to_tuple(self.glossary)

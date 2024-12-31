@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 import json
 from tqdm import tqdm
+import time
 
 from pubscience.translate import api
 from pubscience.translate.api import google_cost_estimator
@@ -60,10 +61,12 @@ try:
                 trans_ids.update({'approx_character_counts_original': character_count})
                 trans_ids.update({'approx_character_counts_translated': len(translated)})
 
+                time.sleep(1)
                 with open(OUTPUT_LOC, 'a', encoding='utf-8') as output_file:
                     output_file.write(json.dumps(trans_ids) + '\n')
 except KeyboardInterrupt:
     print(f"""Processed {sum(character_counts)} characters in {len(character_counts)} documents.""")
-    expected_tot_chars = int(MAX_NUM_LINES*sum(character_counts)/len(character_counts))
-    print(f"""Expected {expected_tot_chars} characters in total, at a cost of ${api.google_cost_estimator(expected_tot_chars)}""")
+
+    tot_chars = int(os.popen(f'wc -c {jsonl_example}').read().split()[0])
+    print(f"""Total: {tot_chars} characters in total, at a cost of ${api.google_cost_estimator(tot_chars)}""")
     pass
