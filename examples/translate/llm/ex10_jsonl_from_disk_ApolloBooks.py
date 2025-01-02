@@ -4,7 +4,7 @@ from pathlib import Path
 import json
 from tqdm import tqdm
 
-from pubscience.translate import ntm
+from pubscience.translate import llm
 
 dotenv.load_dotenv('.env')
 json_example = os.getenv('Apollo_books')
