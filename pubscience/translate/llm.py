@@ -87,13 +87,15 @@ class TranslationLLM:
         target_lang: str,
         system_prompt: str="",
         max_tokens: int=1024,
-        max_processes: int=8):
+        max_processes: int=8,
+        temperature: float=0.0):
 
         self.model = model
         self.provider = provider
         self.source_lang = source_lang
         self.target_lang = target_lang
         self.max_tokens = max_tokens
+        self.temperature = temperature
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.max_processes = max_processes
 
@@ -159,7 +161,12 @@ class TranslationLLM:
             # Check if model is available
             if model not in groq_models:
                 raise ValueError(f"Model {model} not available. Allowable models are: {groq_models}")
+        elif provider == 'deepseek':
+            self.client = openai_client(api_key=os.getenv('DEEPSEEK_LLM_API_KEY'), base_url="https://api.deepseek.com/v1")
+            self.aclient = AsyncOpenAI(api_key=os.getenv('DEEPSEEK_LLM_API_KEY'), base_url="https://api.deepseek.com/v1")
 
+            if model != 'deepseek-chat':
+                raise ValueError(f"Model {model} not available. Allowable models are: ['deepseek-chat']")
         elif provider == 'local':
             from unsloth import FastLanguageModel
             if model not in unsloth_models:
@@ -200,7 +207,7 @@ class TranslationLLM:
                               target_language=self.target_lang,
                               text_to_translate=text)
 
-        if self.provider == 'openai':
+        if self.provider in ['openai', 'deepseek']:
             return self._translate_openai(InputText)
         elif self.provider == 'anthropic':
             return self._translate_anthropic(InputText)
@@ -229,7 +236,7 @@ class TranslationLLM:
                         for text in texts
         ]
 
-        if self.provider == 'openai':
+        if self.provider in ['openai', 'deepseek']:
             coroutines = [self._translate_openai_async(input_text) for input_text in InputTexts]
         elif self.provider == 'anthropic':
             coroutines = [self._translate_anthropic_async(input_text) for input_text in InputTexts]
@@ -247,7 +254,7 @@ class TranslationLLM:
     def _translate_openai(self, InputText: llm_input) -> Dict[str, Any]:
         try:
             response = self.client.chat.completions.create(
-                temperature=0.0,
+                temperature=self.temperature,
                 max_tokens=self.max_tokens,
                 model=self.model,
                 messages=[{
@@ -270,7 +277,7 @@ class TranslationLLM:
     async def _translate_openai_async(self, InputText: str) -> Dict[str, Any]:
         try:
             response = await self.aclient.chat.completions.create(
-                temperature=0.0,
+                temperature=self.temperature,
                 max_tokens=self.max_tokens,
                 model=self.model,
                 messages=[
@@ -297,7 +304,7 @@ class TranslationLLM:
     def _translate_anthropic(self, InputText: llm_input) -> Dict[str, Any]:
         response = self.client.messages.create(
             model=self.model,
-            temperature=0.0,
+            temperature=self.temperature,
             system= f"{self.system_prompt}",
             messages=[{
                 "role": "user",
@@ -311,7 +318,7 @@ class TranslationLLM:
     async def _translate_anthropic_async(self, InputText: llm_input) -> Dict[str, Any]:
         response = await self.aclient.messages.create(
             model=self.model,
-            temperature=0.0,
+            temperature=self.temperature,
             system= f"{self.system_prompt}",
             messages=[{
                 "role": "user",
@@ -393,7 +400,7 @@ class TranslationLLM:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Translate annotated and non-annotated corpora using LLMs.")
     parser.add_argument('--model', type=str, required=True, help='The model to use for translation.')
-    parser.add_argument('--provider', type=str, required=True, choices=['openai', 'anthropic', 'google', 'groq', 'local'], help='The engine to use for translation.')
+    parser.add_argument('--provider', type=str, required=True, choices=['openai', 'anthropic', 'google', 'groq', 'local', 'deepseek'], help='The engine to use for translation.')
     parser.add_argument('--source_lang', type=str, required=True, help='The source language of the text.')
     parser.add_argument('--target_lang', type=str, required=True, help='The target language for the translation.')
     parser.add_argument('--system_prompt', type=str, default="", help='Optional system prompt for the translation model.')
