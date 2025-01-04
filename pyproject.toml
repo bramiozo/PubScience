@@ -33,7 +33,12 @@ pyreadstat = "^1.2.8"
 sas7bdat = "^2.2.3"
 ell-ai = "^0.0.14"
 lxml = "^5.3.0"
+pysbd = "^0.3.4"
+bitsandbytes = "^0.45.0"
+cachetools = "^5.5.0"
+unsloth = "^2024.12.12"
 
+httpx = "0.27.2"
 [tool.poetry.group.dev.dependencies]
 jupyter = "^1.1.1"
 seaborn = "^0.13.2"

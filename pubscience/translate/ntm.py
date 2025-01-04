@@ -1,12 +1,14 @@
 """
 Python class to translate texts using neural machine translation models.
 """
+from transformers.utils.quantization_config import BitsAndBytesConfig
 from pubscience import share
 
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, AutoConfig
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, AutoConfig, BitsAndBytesConfig
 import torch
 from typing import List, Literal, Dict, Tuple, Any
 import nltk
+import pysbd
 import re
 nltk.download('punkt_tab')
 
@@ -20,6 +22,7 @@ import os
 
 from typing import Dict, Tuple, Literal, Any, LiteralString
 
+# https://medium.com/@rakeshrajpurohit/model-quantization-with-hugging-face-transformers-and-bitsandbytes-integration-b4c9983e8996
 class TranslationNTM:
     def __init__(self,
                  model_name: Literal["facebook/nllb-200-3.3B",
@@ -33,19 +36,60 @@ class TranslationNTM:
                  provider: Literal['huggingface', 'local']='huggingface',
                  source_lang: str='eng_Latn',  # Source language code
                  target_lang: str='nld_Latn',  # Target language code
-                 max_length: int=228
+                 max_length: int=228,
+                 sentence_splitter: Literal['nltk', 'pysbd']='pysbd',
+                 num_beams: int=7,
+                 use_quantisation: bool=False,
                  #max_new_tokens: int=256
                  ):
+        self.sentence_splitter = sentence_splitter
         self.model_name = model_name
         self.multilingual = multilingual
         self.use_gpu = use_gpu
         self.provider = provider
         self.source_lang = source_lang
         self.target_lang = target_lang
-        self.max_length = max_length
+        self.max_length = max_length # this is for the tokenizer/chunker
         self.num_pos_embeddings = AutoTokenizer.from_pretrained(model_name).model_max_length
+        self.num_beams = num_beams
+        self.use_quantisation = use_quantisation
         # Ensure max_context_length + max_new_tokens doesn't exceed num_pos_embeddings
-        self.max_new_tokens = self.num_pos_embeddings - self.max_length
+        self.max_new_tokens = max(self.num_pos_embeddings - self.max_length, int(self.max_length*1.5))
+        # set min_new_tokens ?
+        self.gen_kwargs = {
+            'max_new_tokens' : self.max_new_tokens,
+            'num_beams' : self.num_beams,
+            'early_stopping': False,
+            'top_p': 0.95,
+            'top_k': 50,
+            'temperature': 0.77,
+            'do_sample': True,
+            'min_p': 0.05,
+            'repetition_penalty': 1.5,
+            'encoder_repetition_penalty': 1.5,
+            'length_penalty': 0.25,
+            'no_repeat_ngram_size': 0,
+            'num_return_sequences': 1,
+        }
+
+        if self.use_quantisation:
+            self.quant_config = BitsAndBytesConfig(**{
+                "_load_in_4bit": False,
+                "_load_in_8bit": True,
+                "bnb_4bit_compute_dtype": "float16",
+                "bnb_4bit_quant_storage": "uint8",
+                "bnb_4bit_quant_type": "fp4",
+                "bnb_4bit_use_double_quant": False,
+                "llm_int8_enable_fp32_cpu_offload": False,
+                "llm_int8_has_fp16_weight": False,
+                "llm_int8_skip_modules": None,
+                "llm_int8_threshold": 6.0,
+                "load_in_4bit": False,
+                "load_in_8bit": True,
+                "quant_method": "bitsandbytes"
+            })
+        else:
+            self.quant_config = None
 
         print(f"Max length of input: {self.max_length}, Max length of output: {self.max_new_tokens}")
         if self.max_new_tokens < self.max_length:
@@ -80,7 +124,10 @@ class TranslationNTM:
             self.forced_bos_token_id = None
 
         self.load_model()
-        max_model_length = self.model.config.max_position_embeddings
+        max_model_length = getattr(self.model.config, 'max_position_embeddings', None) or \
+                            getattr(self.model.config, 'max_length', None)  \
+                            or getattr(self.model.config, 'n_positions', None)
+        assert(max_model_length is not None), "Model does not have max_position_embeddings, max_length or n_positions attribute."
         assert(self.max_length <= max_model_length), f"max_length {self.max_length} is greater than the model's max_position_embeddings {max_model_length}."
         logger.info(f"Model {self.model_name} loaded successfully.")
         logger.info(f"Model configuration: {self.model.config}")
@@ -109,7 +156,8 @@ class TranslationNTM:
                 self.model = AutoModelForSeq2SeqLM.from_pretrained(
                     self.model_name,
                     device_map='auto' if self.use_gpu else None,
-                    torch_dtype=torch.float32  # Explicitly set dtype to avoid meta tensors
+                    torch_dtype=torch.float32, # Explicitly set dtype to avoid meta tensors
+                    quantization_config=self.quant_config
                 )
                 used_device_map = True
             except Exception as e:
@@ -117,7 +165,8 @@ class TranslationNTM:
                     # If device_map is not supported, load without it
                     self.model = AutoModelForSeq2SeqLM.from_pretrained(
                         self.model_name,
-                        torch_dtype=torch.float32
+                        torch_dtype=torch.float32,
+                        quantization_config=self.quant_config
                     )
                     # Manually move the model to the correct device
                     self.model = self.model.to(_device)
@@ -127,7 +176,8 @@ class TranslationNTM:
                         self.model_name,
                         device_map='auto' if self.use_gpu else None,
                         torch_dtype=torch.float32,
-                        low_cpu_mem_usage=True
+                        low_cpu_mem_usage=True,
+                        quantization_config=self.quant_config
                     )
                     used_device_map = True
                 else:
@@ -137,21 +187,45 @@ class TranslationNTM:
             return self.model
 
     def translate(self, text: str) -> str:
-        inputs = self.tokenizer(text, return_tensors="pt", padding=True, max_length=self.max_length, truncation=True).to(self.device)
+        inputs = self.tokenizer(text, return_tensors="pt",
+            padding=True, max_length=self.max_length, truncation=True).to(self.device)
         if self.multilingual:
             outputs = self.model.generate(**inputs,
-                forced_bos_token_id=self.forced_bos_token_id,
-                max_new_tokens=self.max_new_tokens)
+                **self.gen_kwargs,
+                forced_bos_token_id=self.forced_bos_token_id)
         else:
-            outputs = self.model.generate(**inputs,
-                max_length=self.max_length,
-                early_stopping=True)
+            outputs = self.model.generate(**inputs, **self.gen_kwargs)
         translated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
         return translated_text
 
+    def translate_batch(self, texts: List[str]) -> List[str]:
+            inputs = self.tokenizer(texts,
+                                    return_tensors="pt",
+                                    max_length=self.max_length,
+                                    padding='longest',
+                                    truncation=True).to(self.device)
+            if self.multilingual:
+                with torch.no_grad():
+                    outputs = self.model.generate(**inputs,
+                        **self.gen_kwargs,
+                        forced_bos_token_id=self.forced_bos_token_id,
+                        )
+            else:
+                with torch.no_grad():
+                    outputs = self.model.generate(**inputs,
+                        **self.gen_kwargs)
+            translated_texts = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
+            return translated_texts
+
     def translate_long(self, text: str) -> str:
-        nltk.download('punkt', quiet=True)
-        sentences = nltk.sent_tokenize(text, language='english')
+        if self.sentence_splitter == 'nltk':
+            nltk.download('punkt', quiet=True)
+            sentences = nltk.sent_tokenize(text, language='english')
+        elif self.sentence_splitter == 'pysbd':
+            seg = pysbd.Segmenter(language="en")
+            sentences = seg.segment(text)
+        else:
+            raise ValueError("Unsupported sentence splitter. Choose either 'nltk' or 'pysbd'.")
         translated_sentences = []
         current_chunk = ""
 
@@ -164,7 +238,8 @@ class TranslationNTM:
                     current_chunk_length = len(self.tokenizer.encode(current_chunk + " " + sub_sentence,
                                                                      add_special_tokens=False))
                     if current_chunk_length <= self.max_length:
-                        current_chunk += " " + sub_sentence
+                        current_chunk = f"{current_chunk} {sub_sentence}".strip()
+
                     else:
                         if current_chunk:
                             translated_chunk = self._translate_chunk(current_chunk.strip())
@@ -173,7 +248,8 @@ class TranslationNTM:
             else:
                 current_chunk_length = len(self.tokenizer.encode(current_chunk + " " + sentence, add_special_tokens=False))
                 if current_chunk_length <= self.max_length:
-                    current_chunk += " " + sentence
+                    current_chunk = f"{current_chunk} {sentence}".strip()
+
                 else:
                     if current_chunk:
                         translated_chunk = self._translate_chunk(current_chunk.strip())
@@ -197,7 +273,7 @@ class TranslationNTM:
         sub_sentences = []
         current_sub_sentence = ""
         for word in words:
-            sub_sentence_length = len(self.tokenizer.encode(current_sub_sentence + " " + word))
+            sub_sentence_length = len(self.tokenizer.encode(current_sub_sentence + " " + word, add_special_tokens=False))
             if sub_sentence_length <= self.max_length:
                 current_sub_sentence += " " + word
             else:
@@ -214,7 +290,8 @@ class TranslationNTM:
             [chunk],
             return_tensors="pt",
             truncation=False,  # Disable truncation to prevent input loss
-            max_length=None  # Ensure max_length does not enforce truncation
+            max_length=None,  # Ensure max_length does not enforce truncation
+            padding='longest'
         ).to(self.device)
 
         input_token_length = inputs['input_ids'].shape[1]
@@ -228,16 +305,13 @@ class TranslationNTM:
                 [chunk],
                 return_tensors="pt",
                 truncation=True,
-                max_length=model_max_length - 2  # Adjust for special tokens if needed
+                max_length=self.max_length,
+                padding='longest'
             ).to(self.device)
 
         # Generate translation with specified max_new_tokens
         with torch.no_grad():
-            translated = self.model.generate(
-                **inputs#,
-                #forced_bos_token_id=self.forced_bos_token_id,
-                #max_new_tokens=self.max_new_tokens  # Set to allow longer outputs
-            )
+            translated = self.model.generate(**inputs, **self.gen_kwargs)
 
         return self.tokenizer.decode(translated[0], skip_special_tokens=True)
 
@@ -304,27 +378,36 @@ class TranslationNTM:
 
         for i in range(0, len(chunks), batch_size):
             batch_chunks = chunks[i:i + batch_size]
-            inputs = self.tokenizer(batch_chunks, return_tensors="pt", padding=True, truncation=True, max_length=self.max_length).to(self.device)
+            inputs = self.tokenizer(batch_chunks, return_tensors="pt", truncation=True, max_length=self.max_length, padding='longest').to(self.device)
             with torch.no_grad():
-                translated = self.model.generate(**inputs, forced_bos_token_id=self.forced_bos_token_id)
+                translated = self.model.generate(**inputs, **self.gen_kwargs,
+                    forced_bos_token_id=self.forced_bos_token_id)
                 batch_translations = self.tokenizer.batch_decode(translated, skip_special_tokens=True)
             translated_chunks.extend(batch_translations)
 
         return translated_chunks
 
     def translate_long_batch_v2(self, texts: List[str], batch_size: int = 8) -> List[str]:
-        nltk.download('punkt', quiet=True)
+        if self.sentence_splitter == 'nltk':
+            nltk.download('punkt', quiet=True)
+        elif self.sentence_splitter == 'pysbd':
+            seg = pysbd.Segmenter(language="en")
+        else:
+            raise ValueError("Unsupported sentence splitter. Choose either 'nltk' or 'pysbd'.")
 
         output_texts = []
         for text in texts:
-            sentences = nltk.sent_tokenize(text)
+            if self.sentence_splitter == 'nltk':
+                sentences = nltk.sent_tokenize(text, language='english')
+            elif self.sentence_splitter == 'pysbd':
+                sentences = seg.segment(text)
             chunks = []
             current_chunk_tokens = []
             current_length = 0
 
             # Prepare chunks
             for sentence in sentences:
-                sentence_tokens = self.tokenizer.encode(sentence, add_special_tokens=False)
+                sentence_tokens = self.tokenizer.encode(sentence, add_special_tokens=False, padding='longest')
                 sentence_length = len(sentence_tokens)
 
                 if sentence_length > self.max_length:
@@ -347,9 +430,10 @@ class TranslationNTM:
             for i in range(0, len(chunks), batch_size):
                 batch_chunks = chunks[i:i + batch_size]
                 batch_texts = [self.tokenizer.decode(chunk_tokens, skip_special_tokens=True) for chunk_tokens in batch_chunks]
-                inputs = self.tokenizer(batch_texts, return_tensors="pt", padding=True, truncation=True, max_length=self.max_length).to(self.device)
+                inputs = self.tokenizer(batch_texts, return_tensors="pt", truncation=True, max_length=self.max_length, padding='longest').to(self.device)
                 with torch.no_grad():
-                    translated = self.model.generate(**inputs, forced_bos_token_id=self.forced_bos_token_id, max_length=self.max_length)
+                    translated = self.model.generate(**inputs, **self.gen_kwargs,
+                       forced_bos_token_id=self.forced_bos_token_id)
                     batch_translations = self.tokenizer.batch_decode(translated, skip_special_tokens=True)
                 translated_chunks.extend(batch_translations)
 
@@ -358,18 +442,7 @@ class TranslationNTM:
             output_texts.append(translated_text.strip())
         return output_texts
 
-    def translate_batch(self, texts: List[str]) -> List[str]:
-        inputs = self.tokenizer(texts, return_tensors="pt", padding=True, truncation=True).to(self.device)
-        if self.multilingual:
-            with torch.no_grad():
-                outputs = self.model.generate(**inputs,
-                    forced_bos_token_id=self.forced_bos_token_id,
-                    max_length=self.max_length)
-        else:
-            with torch.no_grad():
-                outputs = self.model.generate(**inputs, max_length=self.max_length)
-        translated_texts = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
-        return translated_texts
+
 
 if __name__ == "__main__":
     print("Multilingual test...")
