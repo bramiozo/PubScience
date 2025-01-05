@@ -6,26 +6,26 @@ from tqdm import tqdm
 
 from pubscience.translate import llm
 
-dotenv.load_dotenv('.env')
+dotenv.load_dotenv('../../.env')
 json_example = os.getenv('Apollo_books')
 json_name = Path(json_example).stem
 
-OUTPUT_LOC = os.getenv('ex10_output_folder')
+OUTPUT_LOC = os.getenv('Apollo_books_output')
 MAX_NUM_LINES = 553_009
 BATCH_SIZE = 8
-INNER_BATCH_SIZE = 8
-USE_GPU = True
-MAX_LENGTH = 128 # 456 for nllb-200-distilled-600M, 228 for maria-nmt
-LONG_TEXTS = True
-USE_QUANTISATION = False
+MAX_LENGTH = 1024
+SYSTEM_PROMPT = "You are a faithful and truthful translator in the medical/clinical domain. The user query is formatted as a dictionary {'source_language':..,'target_language':.., 'text_to_translate':..}, your response should ONLY consist of your translation"
 
-# load translation model
-# single: 'vvn/en-to-dutch-marianmt'
-# multi: 'facebook/nllb-200-distilled-600M'
-#translator = ntm.TranslationNTM(model_name='facebook/nllb-200-distilled-600M',
-#    multilingual=True, max_length=MAX_LENGTH, use_gpu=USE_GPU, target_lang='nld_Latn', #use_quantisation=USE_QUANTISATION)
-translator = ntm.TranslationNTM(model_name='vvn/en-to-dutch-marianmt',
-    multilingual=False, max_length=MAX_LENGTH, use_gpu=USE_GPU, target_lang='nld_Latn')
+vars = {
+    'model': 'gemini-1.5-flash',
+    'provider': 'google',
+    'source_lang': 'english',
+    'target_lang': 'dutch',
+    'max_tokens': MAX_LENGTH,
+    'system_prompt': SYSTEM_PROMPT,
+    'env_loc': '../../.run.env',
+}
+translator = llm.TranslationLLM(**vars)
 
 id_cache = set()
 try:
@@ -62,21 +62,14 @@ with open(json_example, 'r') as file:
             if (len(batch) == batch_size):
                 # Apply your function to the batch here
                 # Example: process_batch(batch)
-                if LONG_TEXTS:
-                    if batch_size>1:
-                        translated_batch = translator.translate_long_batch(batch,
-                            batch_size=INNER_BATCH_SIZE)
-                    else:
-                        translated_batch = [translator.translate_long(batch[0])]
-                else:
-                    translated_batch = translator.translate_batch(batch)
+                translated_batch = translator.translate_batch(batch)
                 batch = []
 
                 for k, _t in enumerate(translated_batch):
                     d = batch_ids[k]
-                    d.update({'text': _t})
+                    d.update({'text': _t['translated_text']})
                     d.update({'approx_token_counts_original': token_counts[k]})
-                    d.update({'approx_token_counts_translated': len(_t.split(" "))})
+                    d.update({'approx_token_counts_translated': len(_t['translated_text'].split(" "))})
                     output_list.append(d)
 
                 with open(OUTPUT_LOC, 'a', encoding='utf-8') as output_file:
@@ -89,19 +82,13 @@ with open(json_example, 'r') as file:
                 token_counts = []
 
 if batch:
-    if LONG_TEXTS:
-        if batch_size > 1:
-            translated_batch = translator.translate_long_batch(batch, batch_size=INNER_BATCH_SIZE)
-        else:
-            translated_batch = [translator.translate_long(batch[0])]
-    else:
-        translated_batch = translator.translate_batch(batch)
+    translated_batch = translator.translate_batch(batch)
 
     for i, translated_text in enumerate(translated_batch):
         d = batch_ids[i]
-        d.update({'text': translated_text})
+        d.update({'text': translated_text['translated_text']})
         d.update({'approx_token_counts_original': token_counts[i]})
-        d.update({'approx_token_counts_translated': len(translated_text.split(" "))})
+        d.update({'approx_token_counts_translated': len(translated_text['translated_text'].split(" "))})
         output_list.append(d)
 
     with open(OUTPUT_LOC, 'a', encoding='utf-8') as output_file:

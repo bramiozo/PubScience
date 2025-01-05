@@ -26,7 +26,7 @@ import httpx
 import argparse
 import warnings
 
-load_dotenv('.env')
+print(f"Current directory: {os.path.join(os.path.dirname(__file__))}")
 
 """
 This module contains classes to translate annotated and non-annotated corpora.
@@ -85,9 +85,15 @@ class TranslationLLM:
         provider: Literal['openai', 'anthropic', 'google', 'groq', 'local'],
         source_lang: str,
         target_lang: str,
+        env_loc: str,
         system_prompt: str="",
         max_tokens: int=1024,
-        max_processes: int=8):
+        max_processes: int=8,
+        ):
+
+        load_dotenv(env_loc)
+
+        SETTINGS_YAML = os.getenv('SETTINGS_YAML')
 
         self.model = model
         self.provider = provider
@@ -116,8 +122,8 @@ class TranslationLLM:
             self.system_prompt = system_prompt
         else:
             try:
-                settings_loc = os.getenv('SETTINGS_YAML')
-                llm_settings = benedict.benedict.from_yaml(settings_loc)
+                print(f"Loading settings from: {SETTINGS_YAML}")
+                llm_settings = benedict.benedict.from_yaml(SETTINGS_YAML)
                 self.system_prompt = llm_settings['translation']['method']['llm']['system_prompt']
             except Exception as e:
                 self.system_prompt = None
@@ -215,7 +221,7 @@ class TranslationLLM:
 
     def translate_batch(self, texts: List[str]) -> List[Dict[str, Any]]:
         assert (self.provider.lower() != "local"), "Batch translation not supported for the local LLM."
-        assert (len(texts)< self.max_processes), f"Batch size {len(texts)} exceeds maximum number of processes: {self.max_processes}"
+        assert (len(texts)<= self.max_processes), f"Batch size {len(texts)} exceeds maximum number of processes: {self.max_processes}"
 
         warnings.warn("""\n\nUsing `translate_batch()` is 50% more expensive than using `llm_batch()`. \n The latter is also faster for larger amounts. \n\n Please consider using `llm_batch()` instead.""", stacklevel=2)
 
@@ -397,6 +403,7 @@ if __name__ == '__main__':
     parser.add_argument('--source_lang', type=str, required=True, help='The source language of the text.')
     parser.add_argument('--target_lang', type=str, required=True, help='The target language for the translation.')
     parser.add_argument('--system_prompt', type=str, default="", help='Optional system prompt for the translation model.')
+    parser.add_argument('--env_loc', type=str, default='.env', help='The location of the .env file.')
     args = parser.parse_args()
 
     translator = TranslationLLM(**vars(args))
