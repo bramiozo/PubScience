@@ -292,7 +292,7 @@ if __name__ == '__main__':
     parser.add_argument('--provider', type=str, help='Provider for the LLM', default='google')
     parser.add_argument('--model', type=str, help='Model for the LLM', default='gemini-1.5-flash')
     parser.add_argument('--n', type=int, help='Number of instructions to apply', default=1)
-    parser.add_argument('--max_tokens', type=int, help='Maximum tokens for the LLM', default=5048)
+    parser.add_argument('--max_tokens', type=int, help='Maximum tokens for the LLM', default=10_096)
     parser.add_argument('--folder_path', type=str, help='Path to folder with .txt files', default=None)
     parser.add_argument('--input_path', type=str, help='Path to input json', default=None)
     parser.add_argument('--text_field', type=str, help='Field in json to transform', default='patient')

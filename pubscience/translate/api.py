@@ -12,9 +12,12 @@ import sqlite3
 import pysbd
 import requests
 
-# DeepL: https://www.deepl.com/en/pro-api
-# Google: https://cloud.google.com/translate/pricing
-#
+# DeepL: https://www.deepl.com/en/pro-api: $20 per 1 million characters
+# Google: https://cloud.google.com/translate/pricing: $20 per 1 million characters
+# Yandex: https://yandex.cloud/en/docs/translate/concepts/api: $4 per 1 million characters
+# Microsoft: https://azure.microsoft.com/en-us/pricing/details/cognitive-services/translator/ : $10 per 1 million characters, $22.000 for 4 billion characters
+# IBM: https://www.ibm.com/cloud/watson-language-translator
+# Baidu: ?
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 GOOGLE_AUTH_FILE = os.getenv('GOOGLE_AUTH_FILE')
@@ -44,7 +47,6 @@ class DeepLProvider(TranslationProvider):
     def __init__(self, api_key: str, max_chunk_size: int = 5_000):
         self.translator = deepl.Translator(api_key)
         self.max_chunk_size = max_chunk_size
-
 
 
     def translate(self,
