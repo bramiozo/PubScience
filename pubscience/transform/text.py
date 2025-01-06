@@ -112,7 +112,8 @@ class transform():
             self.client = anthropic_client(api_key=os.getenv('ANTHROPIC_LLM_API_KEY'))
         elif provider == 'google':
             google_gen.configure(api_key=os.getenv('GOOGLE_LLM_API_KEY'))
-            gGenConfig = google_gen.GenerationConfig(temperature=0.0, max_output_tokens=max_tokens, candidate_count=n)
+            gGenConfig = google_gen.GenerationConfig(temperature=0.1,
+                max_output_tokens=max_tokens, candidate_count=n)
 
             AvailableModels = _get_available_google_models(google_gen)
 
@@ -167,7 +168,7 @@ class transform():
     def __transform_anthropic(self, InputText: llm_input) -> Dict[str, Any]:
         response = self.client.messages.create(
             model=self.model,
-            temperature=0.2,
+            temperature=0.1,
             system= f"{self.system_prompt}",
             messages=[{
                 "role": "user",
@@ -197,7 +198,7 @@ class transform():
     def __transform_openai(self, InputText: llm_input) -> Dict[str, Any]:
         try:
             response = self.client.chat.completions.create(
-                temperature=0.2,
+                temperature=0.1,
                 max_tokens=self.max_tokens,
                 model=self.model,
                 messages=[{
@@ -259,7 +260,7 @@ def parse_json(arguments: argparse.Namespace):
     with open(arguments.input_path, 'r', encoding='utf-8') as f:
         list_of_dicts = json.load(f)
 
-        transformer = transform(
+        _transformer = transform(
                         system_prompt=arguments.system_prompt if arguments.system_prompt else None,
                         instruction_list=arguments.instruction_list.split(",") if arguments.instruction_list else None,
                         provider=arguments.provider,
@@ -268,18 +269,18 @@ def parse_json(arguments: argparse.Namespace):
                         max_tokens=arguments.max_tokens)
 
         for d in tqdm(list_of_dicts):
-            text = d[arguments.text_field]
+            text = "\n".join([d[tf] for tf in arguments.text_fields])
             id = d[arguments.id_field]
 
-            if id in id_cache:
+            if (id in id_cache) | (not text) | (text.strip()==""):
                 continue
 
-            _ = transformer(text)
+            _ = _transformer(text)
 
             input_file_name = os.path.splitext(os.path.basename(arguments.input_path))[0]
             out_path = os.path.join(arguments.output_folder, f"{input_file_name}_{arguments.model}.jsonl")
             with open(out_path, 'a', encoding='utf-8') as f:
-                for k, _trans in enumerate(transformer.intermediate_outputs):
+                for k, _trans in enumerate(_transformer.intermediate_outputs):
                     json_line = json.dumps({arguments.id_field: id, "k": k, "transformed_text": _trans})
                     f.write(json_line + "\n")
             sleep(1)
@@ -292,10 +293,10 @@ if __name__ == '__main__':
     parser.add_argument('--provider', type=str, help='Provider for the LLM', default='google')
     parser.add_argument('--model', type=str, help='Model for the LLM', default='gemini-1.5-flash')
     parser.add_argument('--n', type=int, help='Number of instructions to apply', default=1)
-    parser.add_argument('--max_tokens', type=int, help='Maximum tokens for the LLM', default=5048)
+    parser.add_argument('--max_tokens', type=int, help='Maximum tokens for the LLM', default=8_000)
     parser.add_argument('--folder_path', type=str, help='Path to folder with .txt files', default=None)
     parser.add_argument('--input_path', type=str, help='Path to input json', default=None)
-    parser.add_argument('--text_field', type=str, help='Field in json to transform', default='patient')
+    parser.add_argument('--text_fields', nargs='+', type=str, help='Fields in json to transform', default=['patient'])
     parser.add_argument('--id_field', type=str, help='Field in json to transform', default='patient_uid')
     parser.add_argument('--output_folder', type=str, help='Path to output folder', default=None)
     args = parser.parse_args()
