@@ -16,6 +16,7 @@ from openai import Client as openai_client
 from openai import AsyncOpenAI
 from openai import NotFoundError as openai_NotFoundError
 from openai import RateLimitError as openai_RateLimitError
+from openai import BadRequestError as openai_BadRequestError
 from groq import Groq, AsyncGroq
 
 from typing import Optional, Dict, List, Any, Literal
@@ -276,6 +277,8 @@ class TranslationLLM:
             raise ValueError(f"Model {self.model} not found. {e}. Allowable models are: {self.client.models.list()}")
         except openai_RateLimitError as e:
             raise ValueError(f"Rate limit reached. {e}")
+        except openai_BadRequestError as e:
+            return {'translated_text': 'NOT TRANSLATED -- see error message', 'error_message': f'BadRequest: {str(e)}'}
 
         return {'translated_text': response.choices[0].message.content.strip()}
 
@@ -303,6 +306,8 @@ class TranslationLLM:
             )
         except openai_RateLimitError as e:
             raise ValueError(f"Rate limit reached. {e}")
+        except openai_BadRequestError as e:
+            return {'translated_text': 'NOT TRANSLATED -- see error message', 'error_message': f'BadRequest: {str(e)}'}
 
         return {'translated_text': response.choices[0].message.content.strip()}
 

@@ -12,7 +12,7 @@ jsonl_name = Path(jsonl_example).stem
 
 OUTPUT_LOC = os.getenv('Meditron_guidelines_output')
 MAX_NUM_LINES = 37_971
-BATCH_SIZE = 8
+BATCH_SIZE = 4
 TEXT_IDS = ['title', 'clean_text']
 ID_COLS = ['id', 'source']
 MAX_LENGTH = 15_000
@@ -63,11 +63,15 @@ with open(jsonl_example, 'r') as file:
 
             # TODO: enable short/long batch processing
             if (len(batch) == batch_size):
-                translated_batch = translator.translate_batch(batch)
+                if batch_size == 1:
+                    translated_batch = [translator.translate(input_text)]
+                else:
+                    translated_batch = translator.translate_batch(batch)
                 batch = []
                 for k, _t in enumerate(translated_batch):
                     d = batch_ids[k]
                     d.update({'text': _t['translated_text']})
+                    d.update({'error': _t.get('error_message', None)})
                     d.update({'approx_token_counts_original': token_counts[k]})
                     d.update({'approx_token_counts_translated': len(_t['translated_text'].split(" "))})
                     output_list.append(d)
