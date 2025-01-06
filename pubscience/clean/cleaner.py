@@ -23,15 +23,15 @@ encoding_fixes = [('Ã«', 'ë'),
                   ('Ã¨', 'è'),
                   ('Ã©', 'é'),
                   ('Ã¶', 'ö')]
-              
+
 
 class Cleaner():
-    def __init__(self, 
-                input_format='csv', 
-                output_tabular=False, 
-                sep=';', 
-                sectionize=False, 
-                clean_schema='mimic', 
+    def __init__(self,
+                input_format='csv',
+                output_tabular=False,
+                sep=';',
+                sectionize=False,
+                clean_schema='mimic',
                 config_loc='config/settings.yaml',
                 input_loc=None,
                 output_loc="../assets/corpus_cleaned.dat",
@@ -70,6 +70,21 @@ class Cleaner():
         self.re_replacement = [(re.compile(r''+v[0]), v[1]) for v in self.clean_params['replace_characters']]
         self.sentence = ""
 
+    def _spurious_repetitions(self, txt):
+        '''
+            Takes in text and removes spurious repetitions
+            txt: text to process
+        '''
+        # using regex is too expensive (search space very large)
+        # better to look at character entropy first.
+
+        char_id_seq = get_char_seq(txt)
+        char_id_entr, spans = get_char_entr(char_id_seq, window=5, stride=1)
+        get_candidate_spans = get_cand_dupl(char_id_entr, spans)
+        txt = recombine(spans, get_candidate_spans)
+
+        pass
+
     def _clean(self, txt):
         for r in encoding_fixes:
             txt = txt.replace(r[0], r[1])
@@ -78,10 +93,10 @@ class Cleaner():
         return txt
 
     def _writer(self):
-        return open(self.output_loc, 
-                    self.params['out']['write_mode'], 
-                    encoding=self.params['out']['encoding'])       
-            
+        return open(self.output_loc,
+                    self.params['out']['write_mode'],
+                    encoding=self.params['out']['encoding'])
+
     def _reader(self):
         assert(os.path.isfile(self.input_loc)), "Input file-location does not seem to refer to an actual file"
         assert(mimetypes.guess_type(self.input_loc)[0] in self.accepted_files), f"The file is present but does not seem to be the correct type:"+mimetypes.guess_type(self.input_loc)
@@ -93,11 +108,11 @@ class Cleaner():
                         pass
                 else:
                     yield line
-    
+
     def _reader_buffered(self):
         assert(os.path.isfile(self.input_loc)), "Input file-location does not seem to refer to an actual file"
         assert(mimetypes.guess_type(self.input_loc)[0] in self.accepted_files), f"The file is present but does not seem to be the correct type:"+mimetypes.guess_type(self.input_loc)
-        
+
         with open(self.input_loc, 'r', encoding=self.params['out']['encoding']) as reader:
             f_id = io.FileIO(reader.fileno(), mode='r')
             f_buf = io.BufferedReader(f_id)
@@ -112,7 +127,7 @@ class Cleaner():
                         yield line
                 else:
                     yield line
-            
+
     def _sentencer(self, txt):
         '''
             collect whole sentences (sequence of tokens bounded by separators)
@@ -124,14 +139,14 @@ class Cleaner():
 
     def clean(self):
         assert(self.input_loc is not None), "Input file-location is not set, please set it first"
-        
+
         reader = self._reader_buffered()
         writer = self._writer()
 
         for l in tqdm(reader):
             lp = self._clean(l)
             if len(lp)<self.clean_params['min_sentence_character_length']:
-                continue 
+                continue
             if self._sentencer(lp):
                 writer.write(self.sentence)
                 self.sentence=""
@@ -140,7 +155,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Processing input for the cleaning routine')
     parser.add_argument('--in', dest='file_location', help='Absolute input-file location', type=str)
     parser.add_argument('--out', dest='output_location', help='Absolute output-file location', type=str)
-    parser.add_argument('--config', dest='config_location', help='Absolute config-file location', 
+    parser.add_argument('--config', dest='config_location', help='Absolute config-file location',
                         type=str, default='config/settings.yaml')
     parser.add_argument('--schema', dest='clean_schema', help='Cleaning settings', type=str)
 

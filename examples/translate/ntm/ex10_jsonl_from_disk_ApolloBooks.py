@@ -6,14 +6,14 @@ from tqdm import tqdm
 
 from pubscience.translate import ntm
 
-dotenv.load_dotenv('.env')
+dotenv.load_dotenv('../../.env')
 json_example = os.getenv('Apollo_books')
 json_name = Path(json_example).stem
 
-OUTPUT_LOC = os.getenv('ex10_output_folder')
+OUTPUT_LOC = os.getenv('Apollo_books_output_folder')
 MAX_NUM_LINES = 553_009
-BATCH_SIZE = 8
-INNER_BATCH_SIZE = 8
+BATCH_SIZE = 2
+INNER_BATCH_SIZE = 2
 USE_GPU = True
 MAX_LENGTH = 128 # 456 for nllb-200-distilled-600M, 228 for maria-nmt
 LONG_TEXTS = True
@@ -22,10 +22,12 @@ USE_QUANTISATION = False
 # load translation model
 # single: 'vvn/en-to-dutch-marianmt'
 # multi: 'facebook/nllb-200-distilled-600M'
-#translator = ntm.TranslationNTM(model_name='facebook/nllb-200-distilled-600M',
-#    multilingual=True, max_length=MAX_LENGTH, use_gpu=USE_GPU, target_lang='nld_Latn', #use_quantisation=USE_QUANTISATION)
-translator = ntm.TranslationNTM(model_name='vvn/en-to-dutch-marianmt',
-    multilingual=False, max_length=MAX_LENGTH, use_gpu=USE_GPU, target_lang='nld_Latn')
+translator = ntm.TranslationNTM(model_name='facebook/nllb-200-distilled-600M',
+    multilingual=True, max_length=MAX_LENGTH,
+    use_gpu=USE_GPU, target_lang='nld_Latn', use_quantisation=USE_QUANTISATION)
+#translator = ntm.TranslationNTM(model_name='vvn/en-to-dutch-marianmt',
+#multilingual=False, max_length=MAX_LENGTH,
+# use_gpu=USE_GPU, target_lang='nld_Latn', use_quantisation=USE_QUANTISATION)
 
 id_cache = set()
 try:

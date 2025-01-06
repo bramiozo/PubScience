@@ -14,7 +14,7 @@ translation:
     llm:
       provider: google
       model: models/gemini-1.5-flash
-      batch_size: 16
+      batch_size: 8
       max_tokens: 1024
       system_prompt: "You are a faithful and truthful translator in the medical/clinical domain. The user query is formatted as a dictionary {'source_language':..,'target_language':.., 'text_to_translate':..}, your response should ONLY consist of your translation"
     api:
