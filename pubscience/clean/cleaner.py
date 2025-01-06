@@ -18,6 +18,19 @@ a. Cleaned, text-only corpus without tables/lists, per line of some maximum leng
 b. ditto but per document in tabular format with identifiers/labels, if available
 '''
 
+#text = re.sub(r'(http\:\/\/[A-z0-9.\/\?\-\=]+)|(www\.[A-z0-9.\/\?\-\=]+)', '<WEBLINK>', text)
+#text = re.sub(r'DOI\s[0-9\.\/\-\_]+', '<SCIREF>', text, flags=re.IGNORECASE)
+#text = re.sub(r'[\w\.]\@[\w]+\.\w{2,5}', '<EMAIL>' , text, flags=re.IGNORECASE)
+#text = re.sub(r'\ufffd', '', text)
+#text = re.sub(r"[^\x00-\x7F]+", "", text)
+#text = deduce_fun(text)            
+#text = re.sub(r'[0-9]', '#', text)
+#text = re.sub(r'\#{3,}', '###', text)
+#text = re.sub(r'\-\#\>', ">", text)
+#text = re.sub(r'([A-z])([.:])', r'\1 \2', text)
+#text = re.sub(r'\n', ' ', text)
+#text = re.sub(r'\s{2,}', ' ', text)
+
 encoding_fixes = [('Ã«', 'ë'),
                   ('Ã¯', 'ï'),
                   ('Ã¨', 'è'),
