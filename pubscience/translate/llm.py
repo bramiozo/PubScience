@@ -266,6 +266,9 @@ class TranslationLLM:
         InputText = llm_input(source_language=self.source_lang,
                               target_language=self.target_lang,
                               text_to_translate=text)
+        # check if text is too long
+        if len(text.split()) > self.max_tokens:
+            raise ValueError(f"Text is too long. Max tokens is {self.max_tokens}. Text has {len(text.split())} tokens.")
 
         if self.provider in ['openai', 'deepseek']:
             return self._translate_openai(InputText)
@@ -283,6 +286,7 @@ class TranslationLLM:
     def translate_batch(self, texts: List[str]) -> List[Dict[str, Any]]:
         assert (self.provider.lower() != "local"), "Batch translation not supported for the local LLM."
         assert (len(texts)<= self.max_processes), f"Batch size {len(texts)} exceeds maximum number of processes: {self.max_processes}"
+        assert (all([len(text.split()) <= self.max_tokens for text in texts])), f"One or more texts are too long. Max tokens is {self.max_tokens}."
 
         warnings.warn("""\n\nUsing `translate_batch()` is 50% more expensive than using `llm_batch()`. \n The latter is also faster for larger amounts. \n\n Please consider using `llm_batch()` instead.""", stacklevel=2)
 
