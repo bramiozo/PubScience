@@ -15,7 +15,7 @@ MAX_NUM_LINES = 37_971
 BATCH_SIZE = 4
 TEXT_IDS = ['title', 'clean_text']
 ID_COLS = ['id', 'source']
-MAX_LENGTH = 15_000
+MAX_LENGTH = 5_000
 SYSTEM_PROMPT = "You are a faithful and truthful translator in the medical/clinical domain. The user query is formatted as a dictionary {'source_language':..,'target_language':.., 'text_to_translate':..}, your response should ONLY consist of your translation"
 
 vars = {

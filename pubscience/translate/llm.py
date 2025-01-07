@@ -23,6 +23,7 @@ from typing import Optional, Dict, List, Any, Literal
 from pydantic import BaseModel
 import torch
 import httpx
+import pysbd
 
 import argparse
 import warnings
@@ -61,7 +62,8 @@ prompt_format = """Below is an instruction that describes a task, paired with an
 ### Response:
 {}"""
 
-#TODO: add support for bulk translations, using async methods.
+#TODO: [x] add support for bulk translations, using async methods.
+#TODO: [ ] add support for chunking large texts into smaller pieces for translation.
 
 class llm_input(BaseModel):
     source_language: str
@@ -73,6 +75,56 @@ class llm_input(BaseModel):
     def __repr__(self) -> str:
         return self.__str__()
 
+class llm_inputs(BaseModel):
+    source_language: str
+    target_language: str
+    text_to_translate: str
+    max_words_per_chunk: int = 1024
+
+    def __iter__(self):
+        # calling list(llm_inputs(**vars)) will return a list of dictionaries
+        for txt in self.get_text_chunks():
+            yield {
+                'source_language': self.source_language,
+                'target_language': self.target_language,
+                'text_to_translate': txt
+            }
+
+    def __repr__(self) -> str:
+        return f"llm_inputs(source_language={self.source_language!r}, " \
+               f"target_language={self.target_language!r}, " \
+               f"text_to_translate={self.text_to_translate!r}, " \
+               f"max_words_per_chunk={self.max_words_per_chunk!r})"
+
+    def __len__(self):
+        return len(self.get_text_chunks())
+
+    def get_text_chunks(self) -> List[str]:
+        seg = pysbd.Segmenter(language="en", clean=False)
+        sentences = seg.segment(self.text_to_translate)
+
+        chunks = []
+        current_chunk = []
+        current_word_count = 0
+
+        for sentence in sentences:
+            sentence_words = sentence.split()
+            word_count = len(sentence_words)
+
+            if current_word_count + word_count <= self.max_words_per_chunk:
+                current_chunk.append(sentence)
+                current_word_count += word_count
+            else:
+                if current_chunk:
+                    chunks.append(" ".join(current_chunk))
+                current_chunk = [sentence]
+                current_word_count = word_count
+
+        if current_chunk:
+            chunks.append(" ".join(current_chunk))
+
+        return chunks
+
 def _get_available_google_models(google_gen) -> List[str]:
     available_models = []
     for m in google_gen.list_models():
@@ -83,12 +135,13 @@ def _get_available_google_models(google_gen) -> List[str]:
 class TranslationLLM:
     def __init__(self,
         model: str,
-        provider: Literal['openai', 'anthropic', 'google', 'groq', 'local'],
+        provider: Literal['openai', 'anthropic', 'google', 'groq', 'deepseek', 'local'],
         source_lang: str,
         target_lang: str,
         env_loc: str,
         system_prompt: str="",
-        max_tokens: int=1024,
+        max_tokens: int=5000,
+        max_chunk_size: int=1024,
         max_processes: int=8,
         temperature: float=0.0):
 
@@ -101,6 +154,7 @@ class TranslationLLM:
         self.source_lang = source_lang
         self.target_lang = target_lang
         self.max_tokens = max_tokens
+        self.max_chunk_size = max_chunk_size
         self.temperature = temperature
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.max_processes = max_processes
@@ -278,6 +332,7 @@ class TranslationLLM:
         except openai_RateLimitError as e:
             raise ValueError(f"Rate limit reached. {e}")
         except openai_BadRequestError as e:
+            print(f"Error: {e}")
             return {'translated_text': 'NOT TRANSLATED -- see error message', 'error_message': f'BadRequest: {str(e)}'}
 
         return {'translated_text': response.choices[0].message.content.strip()}
@@ -307,6 +362,7 @@ class TranslationLLM:
         except openai_RateLimitError as e:
             raise ValueError(f"Rate limit reached. {e}")
         except openai_BadRequestError as e:
+            print(f"Error: {e}")
             return {'translated_text': 'NOT TRANSLATED -- see error message', 'error_message': f'BadRequest: {str(e)}'}
 
         return {'translated_text': response.choices[0].message.content.strip()}
@@ -340,16 +396,24 @@ class TranslationLLM:
         return {'translated_text': response.content[0].text.strip()}
 
     def _translate_google(self, InputText: llm_input) -> Dict[str, Any]:
-        response = self.client.generate_content(
-            str(InputText)
-        )
-        return {'translated_text': response.text.strip()}
+        try:
+            response = self.client.generate_content(
+                str(InputText)
+            )
+            return {'translated_text': response.text.strip()}
+        except Exception as e:
+            print(f"Error: {e}")
+            return {'translated_text': 'NOT TRANSLATED -- see error message', 'error_message': f'{str(e)}'}
 
     async def _translate_google_async(self, InputText: llm_input) -> Dict[str, Any]:
-        response = await self.client.generate_content_async(
-            str(InputText)
-        )
-        return {'translated_text': response.text.strip()}
+        try:
+            response = await self.client.generate_content_async(
+                str(InputText)
+            )
+            return {'translated_text': response.text.strip()}
+        except Exception as e:
+            print(f"Error: {e}")
+            return {'translated_text': 'NOT TRANSLATED -- see error message', 'error_message': f'{str(e)}'}
 
     def _translate_groq(self, InputText: llm_input) -> Dict[str, Any]:
         response = self.client.chat.completions.create(
