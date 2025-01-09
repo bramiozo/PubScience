@@ -7,7 +7,7 @@ license = "GPL-3"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.11,<3.13"
 deepl = "^1.18.0"
 google-cloud = "^0.34.0"
 python-dotenv = "^1.0.1"
@@ -41,6 +41,8 @@ httpx = "0.27.2"
 xformers = { url = "https://download.pytorch.org/whl/cu124/xformers-0.0.29.post1-cp312-cp312-win_amd64.whl" }
 deduce = "^3.0.3"
 phonenumbers = "^8.13.52"
+scikit-learn = "^1.6.0"
+spacy = "^3.8.3"
 
 [tool.poetry.group.dev.dependencies]
 jupyter = "^1.1.1"

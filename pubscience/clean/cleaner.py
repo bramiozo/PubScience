@@ -8,6 +8,8 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 import mimetypes
 import io
+import math
+from collections import Counter
 
 '''
 Takes raw data in from:
@@ -37,6 +39,93 @@ encoding_fixes = [('Ã«', 'ë'),
                   ('Ã©', 'é'),
                   ('Ã¶', 'ö')]
 
+def get_char_seq(txt):
+    """
+    Convert the text string into a list (sequence) of character IDs.
+    Here we simply use the built-in `ord` to get the ASCII/Unicode code.
+    """
+    return [ord(ch) for ch in txt]
+
+def compute_entropy(counter):
+    """
+    Given a frequency counter of items in a window, compute Shannon entropy.
+    """
+    total = sum(counter.values())
+    if total == 0:
+        return 0.0
+    
+    entropy = 0.0
+    for count in counter.values():
+        p = count / total
+        entropy -= p * math.log2(p)
+    return entropy
+
+def get_char_entr(char_id_seq, window=5, stride=1):
+    """
+    Compute local entropies over a sliding window, and record the spans (start, end).
+    Returns:
+        char_id_entr (list[float]): A list of entropy values for each window.
+        spans (list[tuple]): Corresponding (start, end) indices for each window.
+    """
+    char_id_entr = []
+    spans = []
+    n = len(char_id_seq)
+    
+    for start in range(0, n - window + 1, stride):
+        end = start + window
+        # Count frequencies of each character ID in the window
+        window_ids = char_id_seq[start:end]
+        freq_counter = Counter(window_ids)
+        
+        e = compute_entropy(freq_counter)
+        char_id_entr.append(e)
+        spans.append((start, end))
+    
+    return char_id_entr, spans
+
+def get_cand_dupl(char_id_entr, spans, threshold=1.0):
+    """
+    Identify spans of low entropy (potential spurious repetition).
+    
+    Args:
+        char_id_entr: A list of entropy values for each window.
+        spans: The corresponding spans (start, end) for each window.
+        threshold: Entropy threshold below which a span is considered "repetitive".
+    
+    Returns:
+        candidate_spans (list[tuple]): Spans that may be spurious duplicates.
+    """
+    candidate_spans = []
+    for e, (start, end) in zip(char_id_entr, spans):
+        if e < threshold:
+            candidate_spans.append((start, end))
+    return candidate_spans
+
+def recombine(spans, candidate_spans, text):
+    """
+    Removes characters in all candidate_spans from the original text.
+    
+    Args:
+        spans (list[tuple]): Not strictly necessary if we already have candidate_spans,
+                             but sometimes you might use 'spans' to figure out something else.
+        candidate_spans (list[tuple]): The (start, end) index ranges to remove.
+        text (str): The original text string.
+
+    Returns:
+        new_text (str): Reconstructed text with spurious spans removed.
+    """
+    to_remove = set()
+    for (start, end) in candidate_spans:
+        # Mark all indices in the range [start, end) for removal
+        to_remove.update(range(start, end))
+
+    # Build new text by skipping removed indices
+    new_chars = []
+    for i, ch in enumerate(text):
+        if i not in to_remove:
+            new_chars.append(ch)
+    
+    return "".join(new_chars)
 
 class Cleaner():
     def __init__(self,
@@ -83,6 +172,7 @@ class Cleaner():
         self.re_replacement = [(re.compile(r''+v[0]), v[1]) for v in self.clean_params['replace_characters']]
         self.sentence = ""
 
+
     def _spurious_repetitions(self, txt):
         '''
             Takes in text and removes spurious repetitions
@@ -94,9 +184,9 @@ class Cleaner():
         char_id_seq = get_char_seq(txt)
         char_id_entr, spans = get_char_entr(char_id_seq, window=5, stride=1)
         get_candidate_spans = get_cand_dupl(char_id_entr, spans)
-        txt = recombine(spans, get_candidate_spans)
+        txt = recombine(spans, get_candidate_spans, txt)
 
-        pass
+        return txt
 
     def _clean(self, txt):
         for r in encoding_fixes:

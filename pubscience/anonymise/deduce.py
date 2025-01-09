@@ -29,18 +29,20 @@ phone_res = [
 
 patid_re = re.compile(r'((verwijzersnummer|verwijsnummer|pati[eë]ntnummer|patientnr|patnummer|patid|pat\.?num\.?)[\s\:\;]\s?([0-9]{5,12}))', re.IGNORECASE)
 
+import spacy
 
 class Deidentify(BaseEstimator, TransformerMixin):
     def __init__(self, method='deduce',
                  n_jobs=1, 
                  to_dataframe=False,
-                 bsn_check=False,
+                 bsn_check=True,
                  date_check=False,
                  phone_check=False,
-                 pid_check=True,
+                 pid_check=False,
+                 number_replace=True,
                  backend='joblib', 
                  custom_list = None,
-                 clear_brackets=True,
+                 clear_brackets=False,
                  kwargs=None,
                  data_index=None, 
                  text_cols=None
@@ -48,12 +50,13 @@ class Deidentify(BaseEstimator, TransformerMixin):
         self.method = method
         self.n_jobs = n_jobs
         self.to_dataframe = to_dataframe
-        self.simplify_deduce = re.compile(r'\-[0-9]\>')
-        self.trim_deduce = re.compile(r'[\<\>]')
+        self.simplify_deduce = re.compile(r'\-[0-9]\]')
+        self.trim_deduce = re.compile(r'[\[\]]')
         self.bsn_check = bsn_check
         self.date_check = date_check
         self.phone_check = phone_check
         self.pid_check = pid_check
+        self.number_replace = number_replace
         self.clear_brackets = clear_brackets
         self.backend='joblib'
         self.data_index = data_index
@@ -68,20 +71,27 @@ class Deidentify(BaseEstimator, TransformerMixin):
         else:
             self.custom_list = False
 
+
         if kwargs==None:
             self.kwargs = dict()  
-            self.kwargs['names'] = True          # Person names, including initials
-            self.kwargs['locations'] = True      # Geographical locations
-            self.kwargs['institutions'] = True   # Institutions
-            self.kwargs['dates'] = True          # Dates
-            self.kwargs['ages'] = False          # Ages
-            self.kwargs['patient_numbers'] = False # Patient numbers
-            self.kwargs['phone_numbers'] = False  # Phone numbers
-            self.kwargs['urls'] = False,          # Urls and e-mail addresses
-            self.kwargs['flatten'] = True        # Debug option 
+            self.kwargs['names'] = True             # Person names, including initials
+            self.kwargs['locations'] = True         # Geographical locations
+            self.kwargs['institutions'] = True      # Institutions
+            self.kwargs['dates'] = True             # Dates
+            self.kwargs['ages'] = True             # Ages
+            self.kwargs['patient_numbers'] = False  # Patient numbers
+            self.kwargs['phone_numbers'] = False    # Phone numbers
+            self.kwargs['email_addresses'] = False  # E-mail addresses
+            self.kwargs['urls'] = False,            # Urls and e-mail addresses
+            self.kwargs['flatten'] = True           # Debug option 
         else: # the error handling should be done by deduce.
             assert (isinstance(kwargs, dict)), 'kwargs should be a dictionary'
             self.kwargs = kwargs
+
+        if method == 'deduce':
+            self.deducer = deduce.Deduce(config=kwargs)
+        elif method == 'spacy':
+            nlp = spacy.load("nl_core_news_sm")
 
     def _to_dataframe(self, X):
         '''
@@ -109,18 +119,18 @@ class Deidentify(BaseEstimator, TransformerMixin):
         if self.method == 'deduce':
             # DEDUCE by Menger et al.
             return self._deduce(string)
-        elif self.method == 'bilstmCRF':
-            # TODO 
-            # deidentify by Trienes et al.
-            return True
-        elif self.method == 'BERT_TKS':
-            # TODO
-            # TKS by Sang et al.   
-            return True
         elif self.method == 'Spacy':
-            # TODO
-            # use entity recognition of person/location/date to perform replacements
-            return True
+            # SpaCy is NOT suitable for Dutch clinical text
+            doc = nlp(string)
+            replaced_tokens = []
+            for token in doc:
+                if token.ent_type_ == "PERSON":
+                    replaced_tokens.append("[PERSOON]")
+                else:
+                    replaced_tokens.append(token.text)
+
+            # Join tokens back into a single string
+            return " ".join(replaced_tokens)
         else:
             raise NotImplementedError('Method not implemented.')
 
@@ -163,12 +173,12 @@ class Deidentify(BaseEstimator, TransformerMixin):
         bsn_list = bsn_re.findall(txt)
         for bsn in bsn_list:
             if self._bsn_check(bsn):
-                txt = txt.replace(bsn, 'BSN')
+                txt = txt.replace(bsn, '[BSN]')
         return txt 
 
     def _patient_id_remove(self, txt):
         for (pid,_,_) in patid_re.findall(txt):
-            txt = txt.replace(pid, 'PATIENTNUMMER')
+            txt = txt.replace(pid, '[PATIENTNUMMER]')
         return txt
         
     def _date_remove(self, txt):
@@ -181,7 +191,7 @@ class Deidentify(BaseEstimator, TransformerMixin):
         for date_re in date_res:
             date_list = date_re.findall(txt)
             for date in date_list:
-                txt = txt.replace(date, 'DATUM')
+                txt = txt.replace(date, '[DATUM]')
         return txt
 
     def _phone_check(self, txt):
@@ -198,7 +208,7 @@ class Deidentify(BaseEstimator, TransformerMixin):
             for phone in phone_list:               
                 phone = phone[0].strip()                
                 if self._phone_check(phone):
-                    txt = txt.replace(phone, 'TELEFOONNUMMER')
+                    txt = txt.replace(phone, '[TELEFOONNUMMER]')
         return txt
 
     def _deduce(self, string):
@@ -221,13 +231,20 @@ class Deidentify(BaseEstimator, TransformerMixin):
             for t in self.custom_list:
                 string = t[0].sub(t[1], string)
         
-        annotated = deduce.annotate_text(string, **self.kwargs) 
         if self.clear_brackets:
-            return self.trim_deduce.sub('', 
-                        self.simplify_deduce.sub('>', 
-                            deduce.deidentify_annotations(annotated)))
+            deid_text = self.deducer.deidentify(string).deidentified_text
+            string = self.trim_deduce.sub('', self.simplify_deduce.sub(']', deid_text))
         else:
-            return self.simplify_deduce.sub('>', deduce.deidentify_annotations(annotated))
+            deid_text = self.deducer.deidentify(string).deidentified_text
+            string = self.simplify_deduce.sub(']', deid_text)
+
+        if self.number_replace:
+            # replace floating point numbers with <FLOAT>
+            string = re.sub(r'\d+\.\d+', '[FLOAT]', string)
+            # replace integers with <INT>
+            string = re.sub(r'\d+', '[INT]', string)
+
+        return string
 
     def _deid_series(self, series):
         #series = pd.Series({'text': series})
@@ -239,14 +256,13 @@ class Deidentify(BaseEstimator, TransformerMixin):
 
         if self.backend=='multiprocessing':
             with get_context("spawn").Pool(self.n_jobs) as pool:
-                results_list = pool.map(self._deduce,
-                                        [(row) for row in txts])
+                results_list = pool.map(self._deduce,  txts, chunksize=100)
         elif self.backend=='joblib':
-            results_list = Parallel(n_jobs=self.n_jobs)\
+            results_list = Parallel(n_jobs=self.n_jobs, backend='loky')\
                            (delayed(self._deduce)(row) for row in txts)
         else:
             raise NotImplementedError('Backend not implemented.')
-        return [res for res in results_list] 
+        return results_list
 
     def _data_check(self, X):
         err_str = 'X should be a pandas.Series, a pandas.DataFrame, a np.array or a list of strings'
@@ -314,12 +330,26 @@ class Deidentify(BaseEstimator, TransformerMixin):
                 return self.deid[0]
             else:
                 return self.deid
-
+            
+def process_parquet_files(InputFolder: str, OutputFolder: str, deidentifier):
+    '''
+        Process all parquet files in a folder
+    '''
+    if not os.path.exists(OutputFolder):
+        os.makedirs(OutputFolder)
+    files = [f for f in os.listdir(InputFolder) if f.endswith('.parquet')]
+    for f in files:
+        data = pd.read_parquet(os.path.join(InputFolder, f))
+        deidentifier.fit_transform(data)\
+                    .to_parquet(os.path.join(OutputFolder, f.replace('.parquet', '_DEID.parquet')), 
+                                index=False)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Deidentify text using Deduce')
     parser.add_argument('--input', type=str, help='input file')
+    parser.add_argument('--input_folder', type=str, help='input folder')
     parser.add_argument('--output', type=str, help='output file')
+    parser.add_argument('--output_folder', type=str, help='output folder')
     parser.add_argument('--method', type=str, default='deduce', help='method to use')
     parser.add_argument('--n_jobs', type=int, default=1, help='number of jobs')
     parser.add_argument('--to_dataframe', action='store_true', help='output as dataframe')
@@ -334,6 +364,17 @@ if __name__ == '__main__':
     parser.add_argument('--text_cols', type=str, nargs='+', help='text columns')
     args = parser.parse_args()
 
+    # either the input or input_folder should be specified
+    if (args.input is None and args.input_folder is None) or (args.input is not None or args.input_folder is not None) :
+        raise ValueError('Either input or input_folder should be specified')
+
+    # either the output or output_folder should be specified
+    if args.input is not None and args.output is None:
+        raise ValueError('Output should be specified if input is specified')
+
+    if args.input_folder is not None and args.output_folder is None:
+        raise ValueError('Output folder should be specified if input folder is specified')
+    
     deid = Deidentify(method=args.method,
                       n_jobs=args.n_jobs,
                       to_dataframe=args.to_dataframe,
@@ -356,9 +397,14 @@ if __name__ == '__main__':
                 data = pd.read_csv(args.input, sep='\t')
             elif args.input.endswith('.xlsx'):
                 data = pd.read_excel(args.input)
+            elif args.input.endswith('.parquet'):
+                data = pd.read_parquet(args.input)
             else:
                 raise ValueError('Input file should be csv, tsv or xlsx')
             deid.fit(data)
             deid.transform(data).to_csv(args.output, index=False)
         else:
             raise ValueError('Output file should be specified')
+        
+    if args.input_folder is not None:
+        process_parquet_files(args.input_folder, args.output_folder, deid)
