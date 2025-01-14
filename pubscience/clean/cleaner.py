@@ -8,7 +8,10 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 import mimetypes
 import io
-
+import math
+from collections import Counter
+import ftfy
+import polars as pl
 '''
 Takes raw data in from:
 raw PubMed/PMC, MIMICIII in tabular format, raw text or xml. --> CHOOSE MOTHERF*CKER!
@@ -18,8 +21,6 @@ a. Cleaned, text-only corpus without tables/lists, per line of some maximum leng
 b. ditto but per document in tabular format with identifiers/labels, if available
 '''
 
-#text = re.sub(r'(http\:\/\/[A-z0-9.\/\?\-\=]+)|(www\.[A-z0-9.\/\?\-\=]+)', '<WEBLINK>', text)
-#text = re.sub(r'DOI\s[0-9\.\/\-\_]+', '<SCIREF>', text, flags=re.IGNORECASE)
 #text = re.sub(r'[\w\.]\@[\w]+\.\w{2,5}', '<EMAIL>' , text, flags=re.IGNORECASE)
 #text = re.sub(r'\ufffd', '', text)
 #text = re.sub(r"[^\x00-\x7F]+", "", text)
@@ -37,20 +38,108 @@ encoding_fixes = [('Ã«', 'ë'),
                   ('Ã©', 'é'),
                   ('Ã¶', 'ö')]
 
+def get_char_seq(txt):
+    """
+    Convert the text string into a list (sequence) of character IDs.
+    Here we simply use the built-in `ord` to get the ASCII/Unicode code.
+    """
+    return [ord(ch) for ch in txt]
+
+def compute_entropy(counter):
+    """
+    Given a frequency counter of items in a window, compute Shannon entropy.
+    """
+    total = sum(counter.values())
+    if total == 0:
+        return 0.0
+    
+    entropy = 0.0
+    for count in counter.values():
+        p = count / total
+        entropy -= p * math.log2(p)
+    return entropy
+
+def get_char_entr(char_id_seq, window=5, stride=1):
+    """
+    Compute local entropies over a sliding window, and record the spans (start, end).
+    Returns:
+        char_id_entr (list[float]): A list of entropy values for each window.
+        spans (list[tuple]): Corresponding (start, end) indices for each window.
+    """
+    char_id_entr = []
+    spans = []
+    n = len(char_id_seq)
+    
+    for start in range(0, n - window + 1, stride):
+        end = start + window
+        # Count frequencies of each character ID in the window
+        window_ids = char_id_seq[start:end]
+        freq_counter = Counter(window_ids)
+        
+        e = compute_entropy(freq_counter)
+        char_id_entr.append(e)
+        spans.append((start, end))
+    
+    return char_id_entr, spans
+
+def get_cand_dupl(char_id_entr, spans, threshold=1.0):
+    """
+    Identify spans of low entropy (potential spurious repetition).
+    
+    Args:
+        char_id_entr: A list of entropy values for each window.
+        spans: The corresponding spans (start, end) for each window.
+        threshold: Entropy threshold below which a span is considered "repetitive".
+    
+    Returns:
+        candidate_spans (list[tuple]): Spans that may be spurious duplicates.
+    """
+    candidate_spans = []
+    for e, (start, end) in zip(char_id_entr, spans):
+        if e < threshold:
+            candidate_spans.append((start, end))
+    return candidate_spans
+
+def recombine(spans, candidate_spans, text):
+    """
+    Removes characters in all candidate_spans from the original text.
+    
+    Args:
+        spans (list[tuple]): Not strictly necessary if we already have candidate_spans,
+                             but sometimes you might use 'spans' to figure out something else.
+        candidate_spans (list[tuple]): The (start, end) index ranges to remove.
+        text (str): The original text string.
+
+    Returns:
+        new_text (str): Reconstructed text with spurious spans removed.
+    """
+    to_remove = set()
+    for (start, end) in candidate_spans:
+        # Mark all indices in the range [start, end) for removal
+        to_remove.update(range(start, end))
+
+    # Build new text by skipping removed indices
+    new_chars = []
+    for i, ch in enumerate(text):
+        if i not in to_remove:
+            new_chars.append(ch)
+    
+    return "".join(new_chars)
 
 class Cleaner():
     def __init__(self,
-                input_format='csv',
                 output_tabular=False,
                 sep=';',
                 sectionize=False,
+                encoding_fix=True,
                 clean_schema='mimic',
                 config_loc='config/settings.yaml',
                 input_loc=None,
                 output_loc="../assets/corpus_cleaned.dat",
+                text_column = 'text',
                 terms_required=None):
         '''
-        input_format : str, input format (tsv/csv/xml/txt)
+        input_format : str, input format (tsv/csv/xml/txt/parquet)
         output_tabular : boolean, output as table
         sep : str, separator
         sectionize : boolean, process only text sections
@@ -59,13 +148,15 @@ class Cleaner():
          sectionize not built, for references see # https://github.com/medspacy/medspacy/blob/master/medspacy/section_detection/sectionizer.py
          and https://allenai.github.io/scispacy/
         '''
+
         self.output_tabular = output_tabular
-        self.input_format = 'csv'
         self.tabular_separator = sep
         self.sectionize = sectionize
+        self.encoding_fix = encoding_fix
         self.clean_schema = clean_schema
         self.input_loc = input_loc
         self.output_loc = output_loc
+        self.text_column = text_column
         self.terms_required = terms_required
         self.accepted_files = ['text/plain', 'text/csv', 'text/tab-separated-values', 'text/jsonl']
 
@@ -83,6 +174,7 @@ class Cleaner():
         self.re_replacement = [(re.compile(r''+v[0]), v[1]) for v in self.clean_params['replace_characters']]
         self.sentence = ""
 
+
     def _spurious_repetitions(self, txt):
         '''
             Takes in text and removes spurious repetitions
@@ -94,16 +186,25 @@ class Cleaner():
         char_id_seq = get_char_seq(txt)
         char_id_entr, spans = get_char_entr(char_id_seq, window=5, stride=1)
         get_candidate_spans = get_cand_dupl(char_id_entr, spans)
-        txt = recombine(spans, get_candidate_spans)
+        txt = recombine(spans, get_candidate_spans, txt)
 
-        pass
+        return txt
 
     def _clean(self, txt):
         for r in encoding_fixes:
             txt = txt.replace(r[0], r[1])
+
         for r in self.re_replacement:
             txt = r[0].sub(r[1], txt)
+        
+        if self.encoding_fix:
+            txt = ftfy.fix_encoding(txt)
+
         return txt
+
+    def _encoding_fix(self, txt):
+        return ftfy.fix_text(txt)
+
 
     def _writer(self):
         return open(self.output_loc,
@@ -112,34 +213,46 @@ class Cleaner():
 
     def _reader(self):
         assert(os.path.isfile(self.input_loc)), "Input file-location does not seem to refer to an actual file"
-        assert(mimetypes.guess_type(self.input_loc)[0] in self.accepted_files), f"The file is present but does not seem to be the correct type:"+mimetypes.guess_type(self.input_loc)
+        file_type = mimetypes.guess_type(self.input_loc)[0]
+        assert(file_type in self.accepted_files or self.input_loc.endswith('.parquet')), f"The file is present but does not seem to be the correct type: {file_type}"
 
-        with open(self.input_loc, 'r', encoding=self.params['out']['encoding']) as reader:
-            for line in reader.readlines():
-                if self.terms_required is not None:
-                    if not any([term in line for term in self.terms_required]):
-                        pass
-                else:
-                    yield line
+        if self.input_loc.endswith('.parquet'):
+            df = pl.read_parquet(self.input_loc)
+            for line in df.iter_rows(named=True):
+                yield line
+        else:
+            with open(self.input_loc, 'r', encoding=self.params['out']['encoding']) as reader:
+                for line in reader.readlines():
+                    if self.terms_required is not None:
+                        if not any([term in line for term in self.terms_required]):
+                            pass
+                    else:
+                        yield line
 
     def _reader_buffered(self):
         assert(os.path.isfile(self.input_loc)), "Input file-location does not seem to refer to an actual file"
-        assert(mimetypes.guess_type(self.input_loc)[0] in self.accepted_files), f"The file is present but does not seem to be the correct type:"+mimetypes.guess_type(self.input_loc)
+        file_type = mimetypes.guess_type(self.input_loc)[0]
+        assert(file_type in self.accepted_files or self.input_loc.endswith('.parquet')), f"The file is present but does not seem to be the correct type: {file_type}"
 
-        with open(self.input_loc, 'r', encoding=self.params['out']['encoding']) as reader:
-            f_id = io.FileIO(reader.fileno(), mode='r')
-            f_buf = io.BufferedReader(f_id)
-            while True:
-                line = f_buf.readline().decode(self.params['out']['encoding'])
-                if not line:
-                    break
-                if self.terms_required is not None:
-                    if not any([term in line for term in self.terms_required]):
-                        pass
+        if self.input_loc.endswith('.parquet'):
+            df = pl.read_parquet(self.input_loc)
+            for line in df.iter_rows(named=True):
+                yield line[self.text_column]
+        else:
+            with open(self.input_loc, 'r', encoding=self.params['out']['encoding']) as reader:
+                f_id = io.FileIO(reader.fileno(), mode='r')
+                f_buf = io.BufferedReader(f_id)
+                while True:
+                    line = f_buf.readline().decode(self.params['out']['encoding'])
+                    if not line:
+                        break
+                    if self.terms_required is not None:
+                        if not any([term in line for term in self.terms_required]):
+                            pass
+                        else:
+                            yield line
                     else:
                         yield line
-                else:
-                    yield line
 
     def _sentencer(self, txt):
         '''
@@ -154,15 +267,28 @@ class Cleaner():
         assert(self.input_loc is not None), "Input file-location is not set, please set it first"
 
         reader = self._reader_buffered()
-        writer = self._writer()
-
-        for l in tqdm(reader):
-            lp = self._clean(l)
-            if len(lp)<self.clean_params['min_sentence_character_length']:
-                continue
-            if self._sentencer(lp):
-                writer.write(self.sentence)
-                self.sentence=""
+        
+        if self.input_loc.endswith('.parquet'):
+            rows = []
+            for l in tqdm(reader):
+                lp = self._clean(l)
+                if len(lp) < self.clean_params['min_sentence_character_length']:
+                    continue
+                if self._sentencer(lp):
+                    rows.append({self.text_column: self.sentence})
+                    self.sentence = ""
+            df = pl.DataFrame(rows)
+            df.write_parquet(self.output_loc)
+        else:
+            writer = self._writer()
+            for l in tqdm(reader):
+                lp = self._clean(l)
+                if len(lp) < self.clean_params['min_sentence_character_length']:
+                    continue
+                if self._sentencer(lp):
+                    writer.write(self.sentence)
+                    self.sentence = ""
+            writer.close()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Processing input for the cleaning routine')

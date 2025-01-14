@@ -1,6 +1,6 @@
 cleaning:
-  max_sentence_length: 512
-  min_sentence_character_length: 25
+  max_sentence_length: 256_000
+  min_sentence_character_length: 1
   sentence_delim: '[:;.]'
   replace_characters: 
     - ['[0-9]', '#']
