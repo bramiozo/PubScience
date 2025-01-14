@@ -42,7 +42,7 @@ def push_to_huggingface(repo_id, dataset_path, card, token, private):
                 raise e
 
     # Upload dataset files
-    if dataset_path.endswith(".jsonl"):
+    if dataset_path.endswith(".jsonl") | dataset_path.endswith(".json"):
         file_path = dataset_path
         dataset_path = os.path.dirname(dataset_path)
         api.upload_file(
