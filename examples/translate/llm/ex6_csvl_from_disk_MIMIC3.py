@@ -5,38 +5,45 @@ import json
 from tqdm import tqdm
 import pandas as pd
 import re # for removing repeated underscores
-from pubscience.translate import ntm
+from pubscience.translate import llm
 
-dotenv.load_dotenv('.env')
-csv_example_dir = os.getenv('MIMIC3_folder')
+dotenv.load_dotenv('../../.env')
+csv_example_dir = os.getenv('MIMIC3')
 
 # list of file
 #
 file_list = os.listdir(csv_example_dir)
-BATCH_SIZE = 32
+BATCH_SIZE = 8
 USE_GPU = True
-TEXT_ID = 'TEXTS'
+TEXT_IDS = ['TEXTS']
 ID_COL = 'id'
 META_COLS = ['ICD9_CODES']
-MAX_LENGTH = 228
-LONG_TEXTS = True
+MAX_LENGTH = 10_000
+SYSTEM_PROMPT = "You are a faithful and truthful translator in the medical/clinical domain. The user query is formatted as a dictionary {'source_language':..,'target_language':.., 'text_to_translate':..}, your response should ONLY consist of your translation"
 
-# load translation model
-# single: 'vvn/en-to-dutch-marianmt'
-# multi: 'facebook/nllb-200-distilled-600M'
-translator = ntm.TranslationNTM(model_name='vvn/en-to-dutch-marianmt', multilingual=False,
-                max_length=MAX_LENGTH, use_gpu=USE_GPU, target_lang='nld_Latn')
+vars = {
+    'model': 'gemini-1.5-flash',
+    'provider': 'google',
+    'source_lang': 'english',
+    'target_lang': 'dutch',
+    'max_tokens': MAX_LENGTH,
+    'system_prompt': SYSTEM_PROMPT,
+    'env_loc': '../../.run.env',
+}
+
+translator = llm.TranslationLLM(**vars)
 
 for file in file_list:
     print(f"Processing {file}...")
     csv_name = Path(file).stem
     name = file.split('.')[0]
-    text_df = pd.read_csv(os.path.join(csv_example_dir, file), sep=",", encoding='latin1')
 
-    OUTPUT_LOC = os.path.join(os.getenv('ex6_output_folder'), f"{name}.jsonl")
+    text_df = pd.read_csv(os.path.join(csv_example_dir, file), sep=",", encoding='latin1')
+    OUTPUT_LOC = os.path.join(os.getenv('MIMIC3_output'), f"{name}.jsonl")
     print(f"Output location: {OUTPUT_LOC}")
 
     MAX_NUM_LINES = text_df.shape[0]
+    print(f"Number of documents: {MAX_NUM_LINES}")
 
     id_cache = set()
     try:
@@ -64,7 +71,7 @@ for file in file_list:
     words_counts = []
     for _id, line in tqdm(enumerate(list_of_dicts), total=MAX_NUM_LINES):
         if _id not in id_cache:
-            input_text = line[TEXT_ID]
+            input_text = "\n".join([str(line[_tid]) for _tid in TEXT_IDS if str(line[_tid]) !=""])
 
             input_text = re.sub(r'_{2,}', r' ', input_text)
             batch.append(input_text)
@@ -78,22 +85,15 @@ for file in file_list:
             if (len(batch) == batch_size):
                 # Apply your function to the batch here
                 # Example: process_batch(batch)
-                if LONG_TEXTS:
-                    if batch_size>1:
-                        translated_batch = translator.translate_long_batch(batch,
-                            batch_size=24)
-                    else:
-                        translated_batch = [translator.translate_long(batch[0])]
-                else:
-                    translated_batch = translator.translate_batch(batch)
+                translated_batch = translator.translate_batch(batch)
 
                 batch = []
                 for i in range(len(batch_ids)):
                     d = batch_ids[i].copy()  # Copy the original dictionary to avoid mutating it
-                    d.update({'text': translated_batch[i]})
+                    d.update({'text': translated_batch[i]['translated_text']})
                     d.update(meta_vals[i])
                     d.update({'approx_word_count_original': words_counts[i]})
-                    d.update({'approx_word_count_translated': len(translated_batch[i].split(" "))})
+                    d.update({'approx_word_count_translated': len(translated_batch[i]['translated_text'].split(" "))})
                     output_list.append(d)
 
                 with open(OUTPUT_LOC, 'a', encoding='utf-8') as output_file:
@@ -111,10 +111,7 @@ for file in file_list:
         # Apply your function to the batch here
         # Example: process_batch(batch)
         translated_batch = translator.translate_batch(batch)
-        output_list = [batch_ids[i].update({'text': translated_batch[i]}) for i in range(len(batch_ids))]
+        output_list = [batch_ids[i].update({'text': translated_batch[i]['translated_text']}) for i in range(len(batch_ids))]
         with open(OUTPUT_LOC, 'a', encoding='utf-8') as output_file:
             for item in output_list:
                 output_file.write(json.dumps(item) + '\n')
-
-    # reset GPU memory/cache
-    translator.reset()

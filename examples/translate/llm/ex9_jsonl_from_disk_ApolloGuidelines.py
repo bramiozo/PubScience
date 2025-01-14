@@ -20,8 +20,8 @@ LONG_TEXTS = False
 SYSTEM_PROMPT = "You are a faithful and truthful translator in the medical/clinical domain. The user query is formatted as a dictionary {'source_language':..,'target_language':.., 'text_to_translate':..}, your response should ONLY consist of your translation"
 
 vars = {
-    'model': 'gpt-4o-mini',
-    'provider': 'openai',
+    'model': 'gemini-1.5-flash',
+    'provider': 'google',
     'source_lang': 'english',
     'target_lang': 'dutch',
     'max_tokens': MAX_LENGTH,
