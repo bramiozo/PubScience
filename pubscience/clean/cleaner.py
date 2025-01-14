@@ -10,7 +10,8 @@ import mimetypes
 import io
 import math
 from collections import Counter
-
+import ftfy
+import polars as pl
 '''
 Takes raw data in from:
 raw PubMed/PMC, MIMICIII in tabular format, raw text or xml. --> CHOOSE MOTHERF*CKER!
@@ -20,8 +21,6 @@ a. Cleaned, text-only corpus without tables/lists, per line of some maximum leng
 b. ditto but per document in tabular format with identifiers/labels, if available
 '''
 
-#text = re.sub(r'(http\:\/\/[A-z0-9.\/\?\-\=]+)|(www\.[A-z0-9.\/\?\-\=]+)', '<WEBLINK>', text)
-#text = re.sub(r'DOI\s[0-9\.\/\-\_]+', '<SCIREF>', text, flags=re.IGNORECASE)
 #text = re.sub(r'[\w\.]\@[\w]+\.\w{2,5}', '<EMAIL>' , text, flags=re.IGNORECASE)
 #text = re.sub(r'\ufffd', '', text)
 #text = re.sub(r"[^\x00-\x7F]+", "", text)
@@ -129,17 +128,18 @@ def recombine(spans, candidate_spans, text):
 
 class Cleaner():
     def __init__(self,
-                input_format='csv',
                 output_tabular=False,
                 sep=';',
                 sectionize=False,
+                encoding_fix=True,
                 clean_schema='mimic',
                 config_loc='config/settings.yaml',
                 input_loc=None,
                 output_loc="../assets/corpus_cleaned.dat",
+                text_column = 'text',
                 terms_required=None):
         '''
-        input_format : str, input format (tsv/csv/xml/txt)
+        input_format : str, input format (tsv/csv/xml/txt/parquet)
         output_tabular : boolean, output as table
         sep : str, separator
         sectionize : boolean, process only text sections
@@ -148,13 +148,15 @@ class Cleaner():
          sectionize not built, for references see # https://github.com/medspacy/medspacy/blob/master/medspacy/section_detection/sectionizer.py
          and https://allenai.github.io/scispacy/
         '''
+
         self.output_tabular = output_tabular
-        self.input_format = 'csv'
         self.tabular_separator = sep
         self.sectionize = sectionize
+        self.encoding_fix = encoding_fix
         self.clean_schema = clean_schema
         self.input_loc = input_loc
         self.output_loc = output_loc
+        self.text_column = text_column
         self.terms_required = terms_required
         self.accepted_files = ['text/plain', 'text/csv', 'text/tab-separated-values', 'text/jsonl']
 
@@ -191,9 +193,18 @@ class Cleaner():
     def _clean(self, txt):
         for r in encoding_fixes:
             txt = txt.replace(r[0], r[1])
+
         for r in self.re_replacement:
             txt = r[0].sub(r[1], txt)
+        
+        if self.encoding_fix:
+            txt = ftfy.fix_encoding(txt)
+
         return txt
+
+    def _encoding_fix(self, txt):
+        return ftfy.fix_text(txt)
+
 
     def _writer(self):
         return open(self.output_loc,
@@ -202,34 +213,46 @@ class Cleaner():
 
     def _reader(self):
         assert(os.path.isfile(self.input_loc)), "Input file-location does not seem to refer to an actual file"
-        assert(mimetypes.guess_type(self.input_loc)[0] in self.accepted_files), f"The file is present but does not seem to be the correct type:"+mimetypes.guess_type(self.input_loc)
+        file_type = mimetypes.guess_type(self.input_loc)[0]
+        assert(file_type in self.accepted_files or self.input_loc.endswith('.parquet')), f"The file is present but does not seem to be the correct type: {file_type}"
 
-        with open(self.input_loc, 'r', encoding=self.params['out']['encoding']) as reader:
-            for line in reader.readlines():
-                if self.terms_required is not None:
-                    if not any([term in line for term in self.terms_required]):
-                        pass
-                else:
-                    yield line
+        if self.input_loc.endswith('.parquet'):
+            df = pl.read_parquet(self.input_loc)
+            for line in df.iter_rows(named=True):
+                yield line
+        else:
+            with open(self.input_loc, 'r', encoding=self.params['out']['encoding']) as reader:
+                for line in reader.readlines():
+                    if self.terms_required is not None:
+                        if not any([term in line for term in self.terms_required]):
+                            pass
+                    else:
+                        yield line
 
     def _reader_buffered(self):
         assert(os.path.isfile(self.input_loc)), "Input file-location does not seem to refer to an actual file"
-        assert(mimetypes.guess_type(self.input_loc)[0] in self.accepted_files), f"The file is present but does not seem to be the correct type:"+mimetypes.guess_type(self.input_loc)
+        file_type = mimetypes.guess_type(self.input_loc)[0]
+        assert(file_type in self.accepted_files or self.input_loc.endswith('.parquet')), f"The file is present but does not seem to be the correct type: {file_type}"
 
-        with open(self.input_loc, 'r', encoding=self.params['out']['encoding']) as reader:
-            f_id = io.FileIO(reader.fileno(), mode='r')
-            f_buf = io.BufferedReader(f_id)
-            while True:
-                line = f_buf.readline().decode(self.params['out']['encoding'])
-                if not line:
-                    break
-                if self.terms_required is not None:
-                    if not any([term in line for term in self.terms_required]):
-                        pass
+        if self.input_loc.endswith('.parquet'):
+            df = pl.read_parquet(self.input_loc)
+            for line in df.iter_rows(named=True):
+                yield line[self.text_column]
+        else:
+            with open(self.input_loc, 'r', encoding=self.params['out']['encoding']) as reader:
+                f_id = io.FileIO(reader.fileno(), mode='r')
+                f_buf = io.BufferedReader(f_id)
+                while True:
+                    line = f_buf.readline().decode(self.params['out']['encoding'])
+                    if not line:
+                        break
+                    if self.terms_required is not None:
+                        if not any([term in line for term in self.terms_required]):
+                            pass
+                        else:
+                            yield line
                     else:
                         yield line
-                else:
-                    yield line
 
     def _sentencer(self, txt):
         '''
@@ -244,15 +267,28 @@ class Cleaner():
         assert(self.input_loc is not None), "Input file-location is not set, please set it first"
 
         reader = self._reader_buffered()
-        writer = self._writer()
-
-        for l in tqdm(reader):
-            lp = self._clean(l)
-            if len(lp)<self.clean_params['min_sentence_character_length']:
-                continue
-            if self._sentencer(lp):
-                writer.write(self.sentence)
-                self.sentence=""
+        
+        if self.input_loc.endswith('.parquet'):
+            rows = []
+            for l in tqdm(reader):
+                lp = self._clean(l)
+                if len(lp) < self.clean_params['min_sentence_character_length']:
+                    continue
+                if self._sentencer(lp):
+                    rows.append({self.text_column: self.sentence})
+                    self.sentence = ""
+            df = pl.DataFrame(rows)
+            df.write_parquet(self.output_loc)
+        else:
+            writer = self._writer()
+            for l in tqdm(reader):
+                lp = self._clean(l)
+                if len(lp) < self.clean_params['min_sentence_character_length']:
+                    continue
+                if self._sentencer(lp):
+                    writer.write(self.sentence)
+                    self.sentence = ""
+            writer.close()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Processing input for the cleaning routine')

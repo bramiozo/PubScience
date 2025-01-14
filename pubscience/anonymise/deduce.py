@@ -14,6 +14,10 @@ import numpy as np
 import pandas as pd
 import phonenumbers
 
+weblink_re = re.compile(r'(https?\:\/\/[A-z0-9.\/\?\-\=]+)|(www\.[A-z0-9.\/\?\-\=]+)', re.IGNORECASE)
+
+doi_re = re.compile(r'DOI\s[0-9\.\/\-\_]+', re.IGNORECASE)
+
 bsn_re = re.compile(r'[^0-9]{1,}([0-9]{9})[^0-9]{1,}')
 
 date_res = [re.compile(r'[12][0-9]{3}[\-\/\\]?[0-9]{1,2}[\-\/\\]?[0-9]{1,2}'),    
@@ -38,6 +42,8 @@ class Deidentify(BaseEstimator, TransformerMixin):
                  bsn_check=True,
                  date_check=False,
                  phone_check=False,
+                 url_check=False,
+                 doi_check=False,
                  pid_check=False,
                  number_replace=True,
                  backend='joblib', 
@@ -55,6 +61,8 @@ class Deidentify(BaseEstimator, TransformerMixin):
         self.bsn_check = bsn_check
         self.date_check = date_check
         self.phone_check = phone_check
+        self.url_check = url_check
+        self.doi_check = doi_check
         self.pid_check = pid_check
         self.number_replace = number_replace
         self.clear_brackets = clear_brackets
@@ -174,13 +182,31 @@ class Deidentify(BaseEstimator, TransformerMixin):
         for bsn in bsn_list:
             if self._bsn_check(bsn):
                 txt = txt.replace(bsn, '[BSN]')
-        return txt 
 
     def _patient_id_remove(self, txt):
         for (pid,_,_) in patid_re.findall(txt):
             txt = txt.replace(pid, '[PATIENTNUMMER]')
         return txt
         
+    def url_remove(self, txt):
+        '''
+            Replace URL with "URL"
+        ''' 
+        url_list = weblink_re.findall(txt)
+        for date in url_list:
+            txt = txt.replace(date, '[URL]')
+        return txt
+
+    def doi_remove(self, txt):
+        '''
+            Replace DOI with "DOI"
+        ''' 
+        doi_list = doi_re.findall(txt)
+        for date in doi_list:
+            txt = txt.replace(date, '[DOI]')
+        return txt        
+
+
     def _date_remove(self, txt):
         '''
             Remove dates from text:

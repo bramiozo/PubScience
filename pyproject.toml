@@ -43,6 +43,7 @@ deduce = "^3.0.3"
 phonenumbers = "^8.13.52"
 scikit-learn = "^1.6.0"
 spacy = "^3.8.3"
+polars = "^1.19.0"
 
 [tool.poetry.group.dev.dependencies]
 jupyter = "^1.1.1"
