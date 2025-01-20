@@ -163,7 +163,7 @@ class TranslationLLM:
             'early_stopping': False,
             'top_p': 0.95,
             'top_k': 50,
-            'temperature': 0.77,
+            'temperature': temperature,
             'do_sample': True,
             'min_p': 0.05,
             'repetition_penalty': 1.5,
@@ -205,7 +205,7 @@ class TranslationLLM:
 
         elif provider == 'google':
             google_gen.configure(api_key=os.getenv('GOOGLE_LLM_API_KEY'))
-            gGenConfig = google_gen.GenerationConfig(temperature=0.0, max_output_tokens=max_tokens)
+            gGenConfig = google_gen.GenerationConfig(temperature=temperature, max_output_tokens=max_tokens)
 
             AvailableModels = _get_available_google_models(google_gen)
 
