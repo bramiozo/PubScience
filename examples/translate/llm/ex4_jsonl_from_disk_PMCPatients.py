@@ -74,11 +74,13 @@ with open(json_example, 'r') as file:
                 batch = []
                 for i in range(len(batch_ids)):
                     d = batch_ids[i].copy()  # Copy the original dictionary to avoid mutating it
-                    d.update({'text': translated_batch[i]['translated_text']})
-                    d.update(meta_vals[i])
-                    d.update({'approx_word_count_original': words_counts[i]})
-                    d.update({'approx_word_count_translated': len(translated_batch[i]['translated_text'].split(" "))})
-                    output_list.append(d)
+                    translated_text = translated_batch[i]['translated_text']
+                    if translated_text is not None:
+                        d.update({'text': translated_text})
+                        d.update(meta_vals[i])
+                        d.update({'approx_word_count_original': words_counts[i]})
+                        d.update({'approx_word_count_translated': len(translated_batch[i]['translated_text'].split(" "))})
+                        output_list.append(d)
 
                 with open(OUTPUT_LOC, 'a', encoding='utf-8') as output_file:
                     for item in output_list:

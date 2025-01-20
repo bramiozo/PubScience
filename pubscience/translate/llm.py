@@ -407,7 +407,7 @@ class TranslationLLM:
             return {'translated_text': response.text.strip()}
         except Exception as e:
             print(f"Error: {e}")
-            return {'translated_text': 'NOT TRANSLATED -- see error message', 'error_message': f'{str(e)}'}
+            return {'translated_text': None}
 
     async def _translate_google_async(self, InputText: llm_input) -> Dict[str, Any]:
         try:
@@ -417,7 +417,7 @@ class TranslationLLM:
             return {'translated_text': response.text.strip()}
         except Exception as e:
             print(f"Error: {e}")
-            return {'translated_text': 'NOT TRANSLATED -- see error message', 'error_message': f'{str(e)}'}
+            return {'translated_text': None}
 
     def _translate_groq(self, InputText: llm_input) -> Dict[str, Any]:
         response = self.client.chat.completions.create(
