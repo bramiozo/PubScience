@@ -6,7 +6,7 @@ from tqdm import tqdm
 import pandas as pd
 import re
 
-from pubscience.translate import ntm
+from pubscience.translate import llm
 
 dotenv.load_dotenv('.env')
 csv_example = os.getenv('MIMIC4_discharge')
@@ -25,12 +25,20 @@ MAX_LENGTH = 228
 MAX_NUM_LINES = text_df.shape[0]
 LONG_TEXTS = True
 
+vars = {
+    'model': 'gpt-4o-mini',
+    'provider': 'openai',
+    'source_lang': 'english',
+    'target_lang': 'dutch',
+    'max_tokens': MAX_LENGTH,
+    'system_prompt': SYSTEM_PROMPT,
+    'env_loc': '../../.run.env',
+}
 
 # load translation model
 # single: 'vvn/en-to-dutch-marianmt'
 # multi: 'facebook/nllb-200-distilled-600M'
-translator = ntm.TranslationNTM(model_name='vvn/en-to-dutch-marianmt', multilingual=False,
-                max_length=MAX_LENGTH, use_gpu=USE_GPU, target_lang='nld_Latn')
+translator = ntm.TranslationLLM(**vars)
 
 id_cache = set()
 try:

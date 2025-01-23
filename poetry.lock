@@ -6561,6 +6561,23 @@ files = [
 pyasn1 = ">=0.1.3"
 
 [[package]]
+name = "sacremoses"
+version = "0.1.1"
+description = "SacreMoses"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "sacremoses-0.1.1-py3-none-any.whl", hash = "sha256:31e04c98b169bfd902144824d191825cd69220cdb4ae4bcf1ec58a7db5587b1a"},
+    {file = "sacremoses-0.1.1.tar.gz", hash = "sha256:b6fd5d3a766b02154ed80b962ddca91e1fd25629c0978c7efba21ebccf663934"},
+]
+
+[package.dependencies]
+click = "*"
+joblib = "*"
+regex = "*"
+tqdm = "*"
+
+[[package]]
 name = "safetensors"
 version = "0.4.5"
 description = ""
@@ -8759,7 +8776,11 @@ cffi = ["cffi (>=1.11)"]
 lock-version = "2.0"
 python-versions = "^3.12"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 content-hash = "724c2f58a1681b9bba81ed291fc96b7970ce82606b0f6b2c33fe72e38606aa67"
 =======
 content-hash = "ca98b75974ce4a5053dd550179685a78bf45ff54aa3620b5e8aeda944c9c5eea"
+>>>>>>> Stashed changes
+=======
+content-hash = "66b2f6fb9662cc682ce6b81d93675c751dad04889e3e355dc74f9b297f73b83b"
 >>>>>>> Stashed changes
