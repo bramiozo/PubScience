@@ -275,15 +275,21 @@ def parse_json(arguments: argparse.Namespace):
             if (id in id_cache) | (not text) | (text.strip()==""):
                 continue
 
-            _ = _transformer(text)
+            try:
+                _ = _transformer(text)
 
-            input_file_name = os.path.splitext(os.path.basename(arguments.input_path))[0]
-            out_path = os.path.join(arguments.output_folder, f"{input_file_name}_{arguments.model}.jsonl")
-            with open(out_path, 'a', encoding='utf-8') as f:
-                for k, _trans in enumerate(_transformer.intermediate_outputs):
-                    json_line = json.dumps({arguments.id_field: id, "k": k, "transformed_text": _trans})
-                    f.write(json_line + "\n")
-            sleep(1)
+                input_file_name = os.path.splitext(os.path.basename(arguments.input_path))[0]
+                out_path = os.path.join(arguments.output_folder, f"{input_file_name}_{arguments.model}.jsonl")
+                with open(out_path, 'a', encoding='utf-8') as f:
+                    for k, _trans in enumerate(_transformer.intermediate_outputs):
+                        json_line = json.dumps({arguments.id_field: id, "k": k, "transformed_text": _trans})
+                        f.write(json_line + "\n")
+                    sleep(1)
+            except Exception as e:
+                print(f"Error transforming text for {id}: {e}")
+
+def parse_csv(arguments: argparse.Namespace):
+    pass
 
 
 if __name__ == '__main__':
