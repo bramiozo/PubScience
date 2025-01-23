@@ -3,35 +3,28 @@ import os
 from pathlib import Path
 import json
 from tqdm import tqdm
-from time import sleep
 
 from pubscience.translate import llm
 
 dotenv.load_dotenv('../../.env')
-json_example = os.getenv('Apollo_guidelines')
+json_example = os.getenv('Apollo_papers')
 json_name = Path(json_example).stem
 
-OUTPUT_LOC = os.getenv('Apollo_guidelines_output')
-MAX_NUM_LINES = 99_687
+OUTPUT_LOC = os.getenv('Apollo_papers_output')
+MAX_NUM_LINES = 878_242
 BATCH_SIZE = 8
-USE_GPU = True
 MAX_LENGTH = 1024
-LONG_TEXTS = False
 SYSTEM_PROMPT = "You are a faithful and truthful translator in the medical/clinical domain. The user query is formatted as a dictionary {'source_language':..,'target_language':.., 'text_to_translate':..}, your response should ONLY consist of your translation"
 
 vars = {
-    'model': 'gemini-1.5-flash',
-    'provider': 'google',
+    'model': 'gemini-1.5-flash',#'gemini-1.5-flash',
+    'provider': 'google', # 'google',
     'source_lang': 'english',
     'target_lang': 'dutch',
     'max_tokens': MAX_LENGTH,
     'system_prompt': SYSTEM_PROMPT,
     'env_loc': '../../.run.env',
 }
-
-# load translation model
-# single: 'vvn/en-to-dutch-marianmt'
-# multi: 'facebook/nllb-200-distilled-600M'
 translator = llm.TranslationLLM(**vars)
 
 id_cache = set()
@@ -81,21 +74,23 @@ with open(json_example, 'r') as file:
 
                 with open(OUTPUT_LOC, 'a', encoding='utf-8') as output_file:
                     for item in output_list:
-                        output_file.write(json.dumps(item) + '\n')
+                        output_file.write(json.dumps(item, ensure_ascii=False) + '\n')
 
                 batch = []
                 batch_ids = []
                 output_list = []
                 token_counts = []
 
-                sleep(1)
+if batch:
+    translated_batch = translator.translate_batch(batch)
 
-    # Process any remaining lines in the last batch
-    if batch:
-        # Apply your function to the batch here
-        # Example: process_batch(batch)
-        translated_batch = translator.translate_batch(batch)
-        output_list = [batch_ids[i].update({'text': translated_batch[i]['translated_text']}) for i in range(len(batch_ids))]
-        with open(OUTPUT_LOC, 'a', encoding='utf-8') as output_file:
-            for item in output_list:
-                output_file.write(json.dumps(item) + '\n')
+    for i, translated_text in enumerate(translated_batch):
+        d = batch_ids[i]
+        d.update({'text': translated_text['translated_text']})
+        d.update({'approx_token_counts_original': token_counts[i]})
+        d.update({'approx_token_counts_translated': len(translated_text['translated_text'].split(" "))})
+        output_list.append(d)
+
+    with open(OUTPUT_LOC, 'a', encoding='utf-8') as output_file:
+        for item in output_list:
+            output_file.write(json.dumps(item, ensure_ascii=False) + '\n')
