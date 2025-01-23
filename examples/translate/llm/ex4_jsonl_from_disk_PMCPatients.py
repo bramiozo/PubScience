@@ -17,7 +17,7 @@ ID_COLS = ['patient_id', 'patient_uid', 'PMID', 'file_path', 'pub_date']
 META_COLS = ['age', 'gender']
 MAX_LENGTH = 10_000
 MAX_NUM_LINES = 250_293
-SLEEP = 5
+SLEEP = 3
 SYSTEM_PROMPT = "You are a faithful and truthful translator in the medical/clinical domain. The user query is formatted as a dictionary {'source_language':..,'target_language':.., 'text_to_translate':..}, your response should ONLY consist of your translation"
 
 vars = {

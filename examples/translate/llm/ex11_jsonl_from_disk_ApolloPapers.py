@@ -17,8 +17,8 @@ MAX_LENGTH = 1024
 SYSTEM_PROMPT = "You are a faithful and truthful translator in the medical/clinical domain. The user query is formatted as a dictionary {'source_language':..,'target_language':.., 'text_to_translate':..}, your response should ONLY consist of your translation"
 
 vars = {
-    'model': 'gemini-1.5-flash',#'gemini-1.5-flash',
-    'provider': 'google', # 'google',
+    'model': 'claude-3-haiku-20240307',#'gemini-1.5-flash', #claude-3-haiku-20240307
+    'provider': 'anthropic', # 'google',
     'source_lang': 'english',
     'target_lang': 'dutch',
     'max_tokens': MAX_LENGTH,

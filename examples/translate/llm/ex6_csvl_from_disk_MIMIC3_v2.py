@@ -6,6 +6,7 @@ from tqdm import tqdm
 import pandas as pd
 import re # for removing repeated underscores
 from pubscience.translate import llm
+from time import sleep
 
 dotenv.load_dotenv('../../.env')
 csv_example_dir = os.getenv('MIMIC3_v2')
@@ -13,12 +14,13 @@ csv_example_dir = os.getenv('MIMIC3_v2')
 # list of file
 #
 file_list = os.listdir(csv_example_dir)
-BATCH_SIZE = 8
+BATCH_SIZE = 4
 USE_GPU = True
 TEXT_IDS = ['DESCRIPTION', 'TEXT']
 META_COLS = ['CATEGORY']
 ID_COL = 'id'
 MAX_LENGTH = 10_000
+SLEEP = 3
 SYSTEM_PROMPT =  """You are a faithful and truthful translator in the medical/clinical domain.
 The user query is formatted as a dictionary {'source_language':..,'target_language':.., 'text_to_translate':..},
 your response should ONLY consist of your translation."""
@@ -35,7 +37,7 @@ DEID_NORMALISATION_REGEX = {
     'FIRST_NAME_4':         (r'\[\*\*First Name[0,9]{0,5} \(NamePattern[0-9]{0,5}\)\s[0-9]{1,4}\*\*\]', '[FIRST_NAME]'),
     'LAST_NAME_1':          (r'\[\*\*Last Name[0,9]{0,5} \(STitle\)\s\*\*\]', '[LAST_NAME]'),
     'LAST_NAME_2':          (r'\[\*\*Last Name[0,9]{0,5} \(Titles\)\s\*\*\]', '[LAST_NAME]'),
-    'LAST_NAME_3':          (r'\[\*\*Last Name[0,9]{0,5} \(NamePattern[0-9]{0,5}\)\s\*\*\]', '[LAST_NAME]'),
+    'LAST_NAME_3':          (r'\[\*50\*Last Name[0,9]{0,5} \(NamePattern[0-9]{0,5}\)\s\*\*\]', '[LAST_NAME]'),
     'LAST_NAME_4':          (r'\[\*\*Last Name[0,9]{0,5} \(NamePattern[0-9]{0,5}\)\s[0-9]{1,4}\*\*\]', '[LAST_NAME]'),
     'LAST_NAME_5':          (r'\[\*\*Known lastname [0,9]{0,5}\*\*\]', '[LAST_NAME]'),
     'DOCTOR_ID':            (r'\[\*\*MD Number([0,9]{0,3}) [0-9]{1,4}\*\*\]', '[DOCTOR_ID]'),
@@ -60,8 +62,8 @@ DEID_NORMALISATION_REGEX = {
 DEID_NORMALISATION_REGEX = {k: (re.compile(v[0]), v[1]) for k, v in DEID_NORMALISATION_REGEX.items()}
 
 vars = {
-    'model': 'gpt-4o-mini',
-    'provider': 'openai',
+    'model': 'gemini-1.5-flash',
+    'provider': 'google',
     'source_lang': 'english',
     'target_lang': 'dutch',
     'max_tokens': MAX_LENGTH,
