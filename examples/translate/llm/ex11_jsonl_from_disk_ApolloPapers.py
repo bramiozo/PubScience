@@ -12,13 +12,13 @@ json_name = Path(json_example).stem
 
 OUTPUT_LOC = os.getenv('Apollo_papers_output')
 MAX_NUM_LINES = 878_242
-BATCH_SIZE = 8
+BATCH_SIZE = 4
 MAX_LENGTH = 1024
 SYSTEM_PROMPT = "You are a faithful and truthful translator in the medical/clinical domain. The user query is formatted as a dictionary {'source_language':..,'target_language':.., 'text_to_translate':..}, your response should ONLY consist of your translation"
 
 vars = {
-    'model': 'claude-3-haiku-20240307',#'gemini-1.5-flash', #claude-3-haiku-20240307
-    'provider': 'anthropic', # 'google',
+    'model': 'gpt-4o-mini', # 'claude-3-haiku-20240307',#'gemini-1.5-flash', #claude-3-haiku-20240307
+    'provider': 'openai', # 'google',
     'source_lang': 'english',
     'target_lang': 'dutch',
     'max_tokens': MAX_LENGTH,

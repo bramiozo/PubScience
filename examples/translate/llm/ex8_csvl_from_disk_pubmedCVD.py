@@ -13,7 +13,7 @@ cvd_dir = os.getenv('PMC_CVD_folder')
 # list of file
 #
 file_list = os.listdir(cvd_dir)
-BATCH_SIZE = 8
+BATCH_SIZE = 4
 USE_GPU = True
 TEXT_ID = 'TEXTS'
 ID_COL = 'id'
