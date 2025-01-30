@@ -38,7 +38,7 @@ class TranslationNTM:
                  target_lang: str='nld_Latn',  # Target language code
                  max_length: int=228,
                  sentence_splitter: Literal['nltk', 'pysbd']='pysbd',
-                 num_beams: int=7,
+                 num_beams: int=5,
                  use_quantisation: bool=False,
                  #max_new_tokens: int=256
                  ):
@@ -54,7 +54,7 @@ class TranslationNTM:
         self.num_beams = num_beams
         self.use_quantisation = use_quantisation
         # Ensure max_context_length + max_new_tokens doesn't exceed num_pos_embeddings
-        self.max_new_tokens = max(self.num_pos_embeddings - self.max_length, int(self.max_length*1.5))
+        self.max_new_tokens = min(self.num_pos_embeddings - self.max_length, int(self.max_length*1.75))
         # set min_new_tokens ?
         self.gen_kwargs = {
             'max_new_tokens' : self.max_new_tokens,
