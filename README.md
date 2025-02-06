@@ -46,9 +46,9 @@ processing functions.
 | Task          | In progress    | Completed  |
 |---------------|----------------|------------|
 | Select & Retrieve    |   [ ]   | [ ]        |
-| Parse         |   [ ]          | [ ]        |
+| Parse         |   [x]          | [ ]        |
 | Identify      |   [ ]          | [ ]        |
-| Deduplicate   |   [ ]          | [ ]        |
+| Deduplicate   |   [x]          | [ ]        |
 | Clean         |   [x]          | [ ]        |
 | Translate     |   [x]          | [ ]        |
 | Anonymise     |   [x]          | [ ]        |
