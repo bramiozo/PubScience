@@ -132,6 +132,41 @@ df['processed_text'] = TextPipe.fit_transform(df['raw_text'])
 # here Deduplicate adds a column to indicate the duplication degree
 ```
 
+Translation
+```python
+
+from pubscience.translate import llm
+
+dotenv.load_dotenv('../../.env')
+json_example = os.getenv('PMC_Patients')
+OUTPUT_LOC = os.getenv('PMC_Patients_output')
+
+BATCH_SIZE = 4
+TEXT_IDS = ['title', 'patient']
+ID_COLS = ['patient_id', 'patient_uid', 'PMID', 'file_path', 'pub_date']
+META_COLS = ['age', 'gender']
+MAX_LENGTH = 10_000
+MAX_NUM_LINES = 250_293
+SLEEP = 3
+SYSTEM_PROMPT = "You are a faithful and truthful translator in the medical/clinical domain. The user query is formatted as a dictionary {'source_language':..,'target_language':.., 'text_to_translate':..}, your response should ONLY consist of your translation"
+
+vars = {
+    'model': 'gemini-1.5-flash',
+    'provider': 'google',
+    'source_lang': 'english',
+    'target_lang': 'dutch',
+    'max_tokens': MAX_LENGTH,
+    'system_prompt': SYSTEM_PROMPT,
+    'temperature': 0.15,
+    'env_loc': '../../.run.env',
+}
+
+translator = llm.TranslationLLM(**vars)
+batches = get_batches(json_example)
+for batch in batches:
+ translated_batch = translator.translate_batch(batch)
+ ...
+```
 
  <p align="center">
 <img src="https://github.com/bramiozo/PubScience/blob/main/PubScience.png" alt="image" width="300" height="auto" >
