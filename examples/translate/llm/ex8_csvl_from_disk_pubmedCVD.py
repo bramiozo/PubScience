@@ -6,9 +6,13 @@ from tqdm import tqdm
 import pandas as pd
 import re # for removing repeated underscores
 from pubscience.translate import llm
+import argparse
 
 dotenv.load_dotenv('../../.env')
 cvd_dir = os.getenv('PMC_CVD_folder')
+
+argparser = argparse.ArgumentParser()
+argparser.add_argument('--skip_existing', action='store_true', help='Skip existing files in the output folder')
 
 # list of file
 #
@@ -35,6 +39,11 @@ translator = llm.TranslationLLM(**vars)
 for file in file_list:
     print(f"Processing {file}...")
     name = re.sub(r'_+', '_', file.split('.')[0])
+
+    out_file_list = os.listdir(os.getenv('PMC_CVD_output'))
+    if (f"{name}.jsonl" in out_file_list) & (argparser.parse_args().skip_existing):
+        print(f"Skipping {name}.jsonl")
+        continue
 
     OUTPUT_LOC = os.path.join(os.getenv('PMC_CVD_output'), f"{name}.jsonl")
     print(f"Output location: {OUTPUT_LOC}")

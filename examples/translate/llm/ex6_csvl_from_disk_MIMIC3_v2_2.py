@@ -7,9 +7,14 @@ import pandas as pd
 import re # for removing repeated underscores
 from pubscience.translate import llm
 from time import sleep
+import argparse
 
 dotenv.load_dotenv('../../.env')
 csv_example_dir = os.getenv('MIMIC3_v22')
+
+argparser = argparse.ArgumentParser()
+argparser.add_argument('--part', type=str, default='*')
+args = argparser.parse_args()
 
 # list of file
 #
@@ -62,8 +67,8 @@ DEID_NORMALISATION_REGEX = {
 DEID_NORMALISATION_REGEX = {k: (re.compile(v[0]), v[1]) for k, v in DEID_NORMALISATION_REGEX.items()}
 
 vars = {
-    'model': 'gpt-4o-mini', # 'gemini-1.5-flash',
-    'provider': 'openai', # 'google',
+    'model': 'gemini-2.0-flash', # ,
+    'provider': 'google', # 'google',
     'source_lang': 'english',
     'target_lang': 'dutch',
     'max_tokens': MAX_LENGTH,
@@ -75,6 +80,11 @@ vars = {
 translator = llm.TranslationLLM(**vars)
 
 for file in file_list:
+    if args.part == '*' or f"part{args.part}" in file:
+        pass
+    else:
+        continue
+
     print(f"Processing {file}...")
     csv_name = Path(file).stem
     name = file.split('.')[0]
