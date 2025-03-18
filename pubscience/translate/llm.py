@@ -9,6 +9,11 @@ import benedict
 import asyncio
 
 import google.generativeai as google_gen
+from google.generativeai.types import (
+    HarmCategory,
+    HarmBlockThreshold
+)
+
 from anthropic import Anthropic
 from anthropic import Client as anthropic_client
 from anthropic import AsyncAnthropic
@@ -205,14 +210,18 @@ class TranslationLLM:
 
         elif provider == 'google':
             google_gen.configure(api_key=os.getenv('GOOGLE_LLM_API_KEY'))
-            gGenConfig = google_gen.GenerationConfig(temperature=temperature, max_output_tokens=max_tokens)
+            gGenConfig = google_gen.GenerationConfig(temperature=temperature,
+                max_output_tokens=max_tokens)
 
             AvailableModels = _get_available_google_models(google_gen)
 
             if f"models/{model}" not in AvailableModels:
                 raise ValueError(f"Model {model} not available. Available models are: {AvailableModels}")
 
-            self.client = google_gen.GenerativeModel(model_name=model, safety_settings=None, system_instruction=self.system_prompt, generation_config=gGenConfig)
+            self.client = google_gen.GenerativeModel(model_name=model,
+                safety_settings=None,
+                system_instruction=self.system_prompt,
+                generation_config=gGenConfig)
         elif provider == 'groq':
             self.client = Groq(api_key=os.getenv('GROQ_LLM_API_KEY'))
             self.aclient = AsyncGroq(api_key=os.getenv('GROQ_LLM_API_KEY'))
@@ -244,7 +253,7 @@ class TranslationLLM:
 
     def _get_anthropic_models(self) -> List[str]:
         key = os.getenv('ANTHROPIC_LLM_API_KEY')
-        response = httpx.get('https://api.anthropic.com/v1/models', headers={'x-api-key': key, "anthropic-version": "2023-06-01", 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'})
+        response = httpx.get('https://api.anthropic.com/v1/models', headers={'x-api-key': key, "anthropic-version": "2025-03-01", 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'})
         if response.status_code == 200:
             data = response.json()
             models = [model['id'] for model in data['data']]
@@ -402,22 +411,34 @@ class TranslationLLM:
     def _translate_google(self, InputText: llm_input) -> Dict[str, Any]:
         try:
             response = self.client.generate_content(
-                str(InputText)
+                str(InputText),
+                safety_settings={
+                    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE
+                }
             )
-            return {'translated_text': response.text.strip()}
+            return {'translated_text': response.text.strip(), 'feedback': response.prompt_feedback}
         except Exception as e:
             print(f"Error: {e}")
-            return {'translated_text': None}
+            return {'translated_text': None, 'feedback': response.prompt_feedback}
 
     async def _translate_google_async(self, InputText: llm_input) -> Dict[str, Any]:
         try:
             response = await self.client.generate_content_async(
-                str(InputText)
+                str(InputText),
+                safety_settings={
+                    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE
+                }
             )
-            return {'translated_text': response.text.strip()}
+            return {'translated_text': response.text.strip(), 'feedback': response.prompt_feedback}
         except Exception as e:
             print(f"Error: {e}")
-            return {'translated_text': None}
+            return {'translated_text': None, 'feedback': response.prompt_feedback}
 
     def _translate_groq(self, InputText: llm_input) -> Dict[str, Any]:
         response = self.client.chat.completions.create(

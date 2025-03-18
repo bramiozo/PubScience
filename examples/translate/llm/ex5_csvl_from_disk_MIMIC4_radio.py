@@ -4,6 +4,7 @@ from pathlib import Path
 import json
 from tqdm import tqdm
 import pandas as pd
+import re
 
 from pubscience.translate import llm
 
@@ -15,7 +16,7 @@ text_df = pd.read_csv(csv_example, sep=",", encoding='latin1')
 text_df = text_df[['note_type', 'text']]
 
 OUTPUT_LOC = os.getenv('MIMIC4_radio_output')
-BATCH_SIZE = 4
+BATCH_SIZE = 8
 USE_GPU = True
 TEXT_IDS = ['text']
 ID_COL = 'id'
@@ -65,6 +66,7 @@ words_counts = []
 for _id, line in tqdm(enumerate(list_of_dicts), total=MAX_NUM_LINES):
     if _id not in id_cache:
         input_text = line['text']
+        input_text = re.sub(r"_{2,}", "[PII]", input_text)
         batch.append(input_text)
         batch_ids.append({ID_COL:_id})
         meta_vals.append({_META:line[_META] for _META in META_COLS})

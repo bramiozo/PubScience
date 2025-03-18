@@ -5,29 +5,39 @@ import json
 from tqdm import tqdm
 import pandas as pd
 import re
-
+import argparse
 from pubscience.translate import llm
 
-dotenv.load_dotenv('.env')
+argparser = argparse.ArgumentParser()
+argparser.add_argument('--part', type=str, choices=['1', '2', '3', '4', '5'], default=1)
+
+PART = argparser.parse_args().part
+
+
+dotenv.load_dotenv('../../.env')
 csv_example = os.getenv('MIMIC4_discharge')
+csv_example = csv_example.replace('partX', f'part{PART}')
+
 csv_name = Path(csv_example).stem
 
 text_df = pd.read_csv(csv_example, sep=",", encoding='latin1')
-text_df = text_df[['note_type', 'text']]
+text_df = text_df[['note_id', 'note_type', 'text']]
 
-OUTPUT_LOC = os.getenv('ex7_output')
-BATCH_SIZE = 64
+OUTPUT_LOC = os.getenv('MIMIC4_discharge_output')
+OUTPUT_LOC = OUTPUT_LOC.replace('partX', f'part{PART}')
+BATCH_SIZE = 2
 USE_GPU = True
 TEXT_IDS = ['text']
 ID_COL = 'id'
-META_COLS = ['note_type']
-MAX_LENGTH = 228
+META_COLS = ['note_id', 'note_type']
+MAX_LENGTH = 32_000
+MIN_LENGTH = 10
 MAX_NUM_LINES = text_df.shape[0]
-LONG_TEXTS = True
+SYSTEM_PROMPT = "You are a faithful and truthful translator in the medical/clinical domain. The user query is formatted as a dictionary {'source_language':..,'target_language':.., 'text_to_translate':..}, your response should ONLY consist of your translation."
 
 vars = {
-    'model': 'gpt-4o-mini',
-    'provider': 'openai',
+    'model': 'gemini-2.0-flash', #'gpt-4o-mini', # 'deepseek-chat',
+    'provider': 'google', # 'openai', #'deepseek',
     'source_lang': 'english',
     'target_lang': 'dutch',
     'max_tokens': MAX_LENGTH,
@@ -38,7 +48,7 @@ vars = {
 # load translation model
 # single: 'vvn/en-to-dutch-marianmt'
 # multi: 'facebook/nllb-200-distilled-600M'
-translator = ntm.TranslationLLM(**vars)
+translator = llm.TranslationLLM(**vars)
 
 id_cache = set()
 try:
@@ -56,7 +66,7 @@ except:
 
 print(f"{len(id_cache)} already in dataset")
 
-list_of_dicts = text_df[['note_type', 'text']].to_dict(orient='records')
+list_of_dicts = text_df[['note_id', 'note_type', 'text']].to_dict(orient='records')
 
 batch_size = BATCH_SIZE
 batch = []
@@ -67,8 +77,11 @@ words_counts = []
 for _id, line in tqdm(enumerate(list_of_dicts), total=MAX_NUM_LINES):
     if _id not in id_cache:
         input_text = line['text']
+        if len(input_text.split(" ")) < MIN_LENGTH:
+            print(f"Skipping line {_id} due to length: {len(input_text)}", flush=True)
+            continue
         # remove repeating occurrences of "_"
-        input_text = re.sub(r"_{2,}", " ", input_text)
+        input_text = re.sub(r"_{2,}", "[PII]", input_text)
         batch.append(input_text)
         batch_ids.append({ID_COL:_id})
         meta_vals.append({_META:line[_META] for _META in META_COLS})
@@ -78,22 +91,20 @@ for _id, line in tqdm(enumerate(list_of_dicts), total=MAX_NUM_LINES):
         if (len(batch) == batch_size):
             # Apply your function to the batch here
             # Example: process_batch(batch)
-            if LONG_TEXTS:
-                if batch_size>1:
-                    translated_batch = translator.translate_long_batch(batch,
-                        batch_size=8)
-                else:
-                    translated_batch = [translator.translate_long(batch[0])]
-            else:
-                translated_batch = translator.translate_batch(batch)
+            translated_batch = translator.translate_batch(batch)
 
             batch = []
             for i in range(len(batch_ids)):
+                txt = translated_batch[i]['translated_text']
+                if txt is None:
+                    print(f"Translation failed for {meta_vals[i]}")
+                    print(f"Response feedback: {translated_batch[i]['feedback']}")
+                    continue
                 d = batch_ids[i].copy()  # Copy the original dictionary to avoid mutating it
-                d.update({'text': translated_batch[i]})
+                d.update({'text': txt})
                 d.update(meta_vals[i])
                 d.update({'approx_word_count_original': words_counts[i]})
-                d.update({'approx_word_count_translated': len(translated_batch[i].split(" "))})
+                d.update({'approx_word_count_translated': len(translated_batch[i]['translated_text'].split(" "))})
                 output_list.append(d)
 
             with open(OUTPUT_LOC, 'a', encoding='utf-8') as output_file:
@@ -111,7 +122,7 @@ if batch:
     # Apply your function to the batch here
     # Example: process_batch(batch)
     translated_batch = translator.translate_batch(batch)
-    output_list = [batch_ids[i].update({'text': translated_batch[i]}) for i in range(len(batch_ids))]
+    output_list = [batch_ids[i].update({'text': translated_batch[i]['translated_text']}) for i in range(len(batch_ids))]
     with open(OUTPUT_LOC, 'a', encoding='utf-8') as output_file:
         for item in output_list:
             output_file.write(json.dumps(item) + '\n')
