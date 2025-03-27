@@ -237,6 +237,8 @@ class TranslationLLM:
             if model != 'deepseek-chat':
                 raise ValueError(f"Model {model} not available. Allowable models are: ['deepseek-chat']")
         elif provider == 'local':
+            # EuroLLM-9B-Instruct
+            # unsloth/Mixtral-8x7B-v0.1-bnb-4bit
             from unsloth import FastLanguageModel
             if model not in unsloth_models:
                 raise ValueError(f"""Model {model} not available.

@@ -11,9 +11,9 @@ cleaning:
   write_mode: w
 transformation:
   instructions:
-    - "Translate this radiology report from English to Dutch."
-    #- "Rewrite this text and structure it as a discharge summary"
-    #- "Translate the text from English to Dutch"
+    - "Replace all medication terms with the term MEDICATION"
+    - "Rewrite this text and structure it as a discharge summary"
+    - "Translate the text from English to Dutch"
   method:
     llm:
       provider: openai #google
