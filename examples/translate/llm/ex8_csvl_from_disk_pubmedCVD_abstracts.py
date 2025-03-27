@@ -9,7 +9,7 @@ from pubscience.translate import llm
 import argparse
 
 dotenv.load_dotenv('../../.env')
-cvd_dir = os.getenv('PMC_CVD_folder')
+cvd_dir = os.getenv('PMC_CVD_folder_abstracts')
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument('--skip_existing', action='store_true', help='Skip existing files in the output folder')
@@ -45,7 +45,7 @@ for file in file_list:
         print(f"Skipping {name}.jsonl")
         continue
 
-    OUTPUT_LOC = os.path.join(os.getenv('PMC_CVD_output'), f"{name}.jsonl")
+    OUTPUT_LOC = os.path.join(os.getenv('PMC_CVD_output'), f"{name}_abstract.jsonl")
     print(f"Output location: {OUTPUT_LOC}")
 
     id_cache = set()

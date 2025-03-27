@@ -170,6 +170,19 @@ for batch in batches:
  ...
 ```
 
+Transformation
+```python
+from pubscience.transform import text
+transformer = text.transform(
+    system_prompt=args.system_prompt if args.system_prompt else None,
+    instruction_list=args.instruction_list.split(",") if args.instruction_list else None,
+    provider=args.provider,
+    model=args.model,
+    n=args.n,
+    max_tokens=args.max_tokens
+)
+```
+
  <p align="center">
 <img src="https://github.com/bramiozo/PubScience/blob/main/PubScience.png" alt="image" width="300" height="auto" >
  </p>
