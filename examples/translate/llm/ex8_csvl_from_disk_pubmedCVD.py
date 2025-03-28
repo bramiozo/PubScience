@@ -77,6 +77,7 @@ for file in file_list:
     for _id, line in tqdm(enumerate(list_of_texts), total=MAX_NUM_LINES):
         if _id not in id_cache:
             input_text = line
+            input_text = re.sub(r'\[\,*\]', '', input_text)
             batch.append(input_text)
             id_dict = {ID_COL:_id}
             batch_ids.append(id_dict)
