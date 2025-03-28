@@ -318,7 +318,7 @@ if __name__ == '__main__':
             raise ValueError("Please provide an output folder")
         parse_json(args)
     else:
-        transformer = transform(
+        transformer = text.transform(
             system_prompt=args.system_prompt if args.system_prompt else None,
             instruction_list=args.instruction_list.split(",") if args.instruction_list else None,
             provider=args.provider,

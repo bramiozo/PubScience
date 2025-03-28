@@ -43,20 +43,20 @@ processing functions.
 
 
 **Status** (minimum working example):
-| Task          | In progress    | Completed  |
-|---------------|----------------|------------|
-| Select & Retrieve    |   [ ]   | [ ]        |
-| Parse         |   [x]          | [ ]        |
-| Identify      |   [ ]          | [ ]        |
-| Deduplicate   |   [x]          | [ ]        |
-| Clean         |   [x]          | [ ]        |
-| Translate     |   [x]          | [ ]        |
-| Anonymise     |   [x]          | [ ]        |
-| Share         |   [ ]          | [ ]        |
-| Augment       |   [ ]          | [ ]        |
-| Synonimize    |   [ ]          | [ ]        |
-| Deabbreviate  |   [ ]          | [ ]        |
-| Stats         |   [ ]          | [ ]        |
+| Task          | In progress    | Completed  | Current Task  |
+|---------------|----------------|------------|---------------|
+| Select & Retrieve    |   [ ]   | [ ]        |               |
+| Parse         |   [x]          | [ ]        |               |
+| Identify      |   [ ]          | [ ]        |               |
+| Deduplicate   |   [x]          | [ ]        |               |
+| Clean         |   [x]          | [ ]        |               |
+| Translate     |   [x]          | [ ]        |   *batch translation* |
+| Anonymise     |   [x]          | [ ]        |               |
+| Share         |   [ ]          | [ ]        |               |
+| Augment       |   [ ]          | [ ]        |  *paraphrase* |
+| Synonimize    |   [ ]          | [ ]        |               |
+| Deabbreviate  |   [ ]          | [ ]        |               |
+| Stats         |   [ ]          | [ ]        |               |
 
 ## Project descriptions
 Here we can a bit more detail on the projects.
@@ -373,7 +373,7 @@ As part of Dutch clinical texts
 
 **Term similarity**
 * [UMNSRS](https://huggingface.co/datasets/bigbio/umnsrs)
-  
+
 **NER**
 
 * [BLURB](https://huggingface.co/datasets/bigbio/blurb)
@@ -400,7 +400,7 @@ As part of Dutch clinical texts
 * [S800](https://species.jensenlab.org/)
 * [NLM GENE](https://huggingface.co/datasets/bigbio/nlm_gene)
 * [tmVar](https://huggingface.co/datasets/bigbio/tmvar_v3)
-* [GENIA term](https://nlp.stanford.edu/~mcclosky/biomedical.html), also [see](https://huggingface.co/datasets/bigbio/genia_term_corpus) 
+* [GENIA term](https://nlp.stanford.edu/~mcclosky/biomedical.html), also [see](https://huggingface.co/datasets/bigbio/genia_term_corpus)
 * [SCAI Disease](https://huggingface.co/datasets/bigbio/scai_disease)
 * [SCAI Chemical](https://huggingface.co/datasets/bigbio/scai_chemical)
 * [NLM WSD](https://huggingface.co/datasets/bigbio/nlm_wsd)
@@ -433,7 +433,7 @@ As part of Dutch clinical texts
 * [GENIA relation](https://huggingface.co/datasets/bigbio/genia_relation_corpus)
 * [BioRelex](https://huggingface.co/datasets/bigbio/biorelex)
 * [BioNLP BB](https://huggingface.co/datasets/bigbio/bionlp_st_2019_bb), [BioNLP PC](https://huggingface.co/datasets/bigbio/bionlp_st_2013_pc), [BioNLP GRO ](https://huggingface.co/datasets/bigbio/bionlp_st_2013_gro), [BioNLP CG](https://huggingface.co/datasets/bigbio/bionlp_st_2013_cg), [BioNLP REL](https://huggingface.co/datasets/bigbio/bionlp_st_2011_rel), [BioNLP EPI](https://huggingface.co/datasets/bigbio/bionlp_st_2011_epi), [BioNLP GE](https://huggingface.co/datasets/bigbio/bionlp_st_2011_ge)
-  
+
 **Document classification**
 * [HoC](https://github.com/justinphan3110/SciFive/tree/main/biot5x/data/HoC), also [see](https://huggingface.co/datasets/bigbio/hallmarks_of_cancer)
 * [NLMChem](https://huggingface.co/datasets/bigbio/nlmchem)
@@ -456,7 +456,7 @@ As part of Dutch clinical texts
 * [BioHowWhy](https://huggingface.co/datasets/bigbio/biology_how_why_corpus)
 * [BioInfer](https://huggingface.co/datasets/bigbio/bioinfer)
 * [AskAPatient](https://huggingface.co/datasets/bigbio/ask_a_patient)
-  
+
 ## German
 
 **NER**
