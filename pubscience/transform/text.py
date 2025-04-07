@@ -14,7 +14,13 @@ from anthropic.resources import Messages
 from dotenv import load_dotenv
 import benedict
 
-import google.generativeai as google_gen
+import google.genai as google_gen
+from google.genai.types import (
+    HarmCategory,
+    HarmBlockThreshold,
+    GenerateContentConfig,
+    SafetySetting
+)
 from anthropic import Client as anthropic_client
 from openai import Client as openai_client
 from openai import NotFoundError as openai_NotFoundError
@@ -59,6 +65,7 @@ class transform():
                  provider: Literal['google', 'anthropic', 'openai', 'groq']=None,
                  model: str|None=None,
                  n: int=1,
+                 temperature: float=0.25,
                  batch_size: int=1,
                  max_tokens: int=5048):
 
@@ -74,6 +81,15 @@ class transform():
 
         settings_loc = os.getenv('SETTINGS_YAML')
         llm_settings = benedict.benedict.from_yaml(settings_loc)
+
+        google_gen_kwargs = {
+            'top_p': 0.95,
+            'top_k': 50,
+            'temperature': temperature,
+            'frequency_penalty': 1.5,
+            'presence_penalty': 0.25,
+            'candidate_count': 1
+        }
 
 
         # TODO: add support for n>1
@@ -111,16 +127,26 @@ class transform():
         elif provider == 'anthropic':
             self.client = anthropic_client(api_key=os.getenv('ANTHROPIC_LLM_API_KEY'))
         elif provider == 'google':
-            google_gen.configure(api_key=os.getenv('GOOGLE_LLM_API_KEY'))
-            gGenConfig = google_gen.GenerationConfig(temperature=0.1,
-                max_output_tokens=max_tokens, candidate_count=n)
-
             AvailableModels = _get_available_google_models(google_gen)
 
             if f"models/{model}" not in AvailableModels:
                 raise ValueError(f"Model {model} not available. Available models are: {AvailableModels}")
 
-            self.client = google_gen.GenerativeModel(model_name=model, safety_settings=None, system_instruction=self.system_prompt, generation_config=gGenConfig)
+            safety_settings=[
+                SafetySetting(category=HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold=HarmBlockThreshold.BLOCK_NONE),
+                SafetySetting(category=HarmCategory.HARM_CATEGORY_HARASSMENT, threshold=HarmBlockThreshold.BLOCK_NONE),
+                SafetySetting(category=HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold=HarmBlockThreshold.BLOCK_NONE),
+                SafetySetting(category=HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold=HarmBlockThreshold.BLOCK_NONE)
+            ]
+            self.GoogleConfig = GenerateContentConfig(
+                system_instruction = self.system_prompt,
+                max_output_tokens = max_tokens,
+                temperature = temperature,
+                safety_settings = safety_settings,
+                **google_gen_kwargs,
+            )
+
+            self.client = google_gen.Client(api_key=os.getenv('GOOGLE_LLM_API_KEY'))
         elif provider == 'groq':
             self.client = Groq(api_key=os.getenv('GROQ_LLM_API_KEY'))
 
@@ -154,8 +180,10 @@ class transform():
         # TODO: if self.n>1, this will return a list of responses...
         # TODO: the number of total outcome then becomes n^numInstructions, perhaps not what we want? :D
         try:
-            response = self.client.generate_content(
-                str(InputText),
+            response = self.client.models.generate_content(
+                model=self.model,
+                contents=str(InputText),
+                config = self.GoogleConfig
             )
             if response.parts:
                 return response.text.strip()

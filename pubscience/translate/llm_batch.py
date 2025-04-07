@@ -12,7 +12,9 @@ The batch processing feature is available for the following models:
 - Google: gemini-1.5-flash-002
 """
 
-
+import time
+from google import generativeai
+from google.generativeai.types import CreateBatchJobConfig, JobState, HttpOptions
 
 class OpenAI:
     '''
@@ -37,5 +39,59 @@ class Google:
     '''
         Sources:
         - https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/batch-prediction-gemini#generative-ai-batch-text-python_genai_sdk
+        - https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/batch-prediction-api
     '''
-    pass
+
+    def __init__(self, input_file: str = None, output_location: str = None, model: str="gemini-2.0-flash-001"):
+        self.input_file = input_file
+        self.output_location = output_location
+        self.model = model
+        self.client = generativeai.Client(http_options=HttpOptions(api_version="v1"))
+
+    def _collect_batch_query(self):
+        """read in parquet or jsonl and create jsonl with format:
+            {
+            "contents": [
+                {
+                "role": "user",
+                "parts": [
+                    {
+                    "text": "Give me a recipe for banana bread."
+                    }
+                ]
+                }
+            ],
+            "system_instruction": {
+                "parts": [
+                {
+                    "text": "You are a chef."
+                }
+                ]
+            }
+            }
+        """
+        pass
+
+    def _upload_to_gcs(self):
+        pass
+
+    def load_batch(self):
+        job = self.client.batches.create(
+            model=self.model,
+            src="bq://storage-samples.generative_ai.batch_requests_for_multimodal_input",
+            config=CreateBatchJobConfig(dest=self.output_location),
+        )
+        print(f"Job name: {job.name}")
+        print(f"Job state: {job.state}")
+
+        completed_states = {
+            JobState.JOB_STATE_SUCCEEDED,
+            JobState.JOB_STATE_FAILED,
+            JobState.JOB_STATE_CANCELLED,
+            JobState.JOB_STATE_PAUSED,
+        }
+
+        while job.state not in completed_states:
+            time.sleep(360)
+            job = self.client.batches.get(name=job.name)
+            print(f"Job state: {job.state}")

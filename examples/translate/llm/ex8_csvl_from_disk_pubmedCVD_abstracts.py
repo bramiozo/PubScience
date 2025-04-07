@@ -21,6 +21,7 @@ BATCH_SIZE = 4
 USE_GPU = True
 TEXT_ID = 'TEXTS'
 ID_COL = 'id'
+MIN_LENGTH = 10
 MAX_LENGTH = 10_000
 SYSTEM_PROMPT = "You are a faithful and truthful translator in the medical/clinical domain. The user query is formatted as a dictionary {'source_language':..,'target_language':.., 'text_to_translate':..}, your response should ONLY consist of your translation"
 
@@ -77,35 +78,38 @@ for file in file_list:
     for _id, line in tqdm(enumerate(list_of_texts), total=MAX_NUM_LINES):
         if _id not in id_cache:
             input_text = line
-            batch.append(input_text)
-            id_dict = {ID_COL:_id}
-            batch_ids.append(id_dict)
-            words_counts.append(len(input_text.split(" ")))
+            wc = len(input_text.split(" "))
+            words_counts.append(wc)
 
-            # TODO: enable short/long batch processing
-            if (len(batch) == batch_size):
-                # Apply your function to the batch here
-                # Example: process_batch(batch)
-                translated_batch = translator.translate_batch(batch)
+            if wc>MIN_LENGTH:
+                batch.append(input_text)
+                id_dict = {ID_COL:_id}
+                batch_ids.append(id_dict)
 
-                batch = []
-                for i in range(len(batch_ids)):
-                    d = batch_ids[i].copy()  # Copy the original dictionary to avoid mutating it
-                    d.update({'text': translated_batch[i]['translated_text']})
-                    d.update({'approx_word_count_original': words_counts[i]})
-                    d.update({'approx_word_count_translated': len(translated_batch[i]['translated_text'].split(" "))})
-                    output_list.append(d)
+                # TODO: enable short/long batch processing
+                if (len(batch) == batch_size):
+                    # Apply your function to the batch here
+                    # Example: process_batch(batch)
+                    translated_batch = translator.translate_batch(batch)
 
-                with open(OUTPUT_LOC, 'a', encoding='latin-1') as output_file:
-                    for item in output_list:
-                        output_file.write(json.dumps(item) + '\n')
+                    batch = []
+                    for i in range(len(batch_ids)):
+                        d = batch_ids[i].copy()  # Copy the original dictionary to avoid mutating it
+                        d.update({'text': translated_batch[i]['translated_text']})
+                        d.update({'approx_word_count_original': words_counts[i]})
+                        d.update({'approx_word_count_translated': len(translated_batch[i]['translated_text'].split(" "))})
+                        output_list.append(d)
 
-                batch = []
-                batch_ids = []
-                output_list = []
-                words_counts = []
+                    with open(OUTPUT_LOC, 'a', encoding='latin-1') as output_file:
+                        for item in output_list:
+                            output_file.write(json.dumps(item) + '\n')
 
-    # Process any remaining lines in the last batch
+                    batch = []
+                    batch_ids = []
+                    output_list = []
+                    words_counts = []
+
+        # Process any remaining lines in the last batch
     if batch:
         # Apply your function to the batch here
         # Example: process_batch(batch)

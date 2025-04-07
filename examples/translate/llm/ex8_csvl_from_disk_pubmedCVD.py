@@ -18,10 +18,10 @@ argparser.add_argument('--skip_existing', action='store_true', help='Skip existi
 #
 file_list = os.listdir(cvd_dir)
 BATCH_SIZE = 4
-USE_GPU = True
 TEXT_ID = 'TEXTS'
 ID_COL = 'id'
-MAX_LENGTH = 10_000
+MAX_LENGTH = 16_000
+MIN_LENGTH = 30
 SYSTEM_PROMPT = "You are a faithful and truthful translator in the medical/clinical domain. The user query is formatted as a dictionary {'source_language':..,'target_language':.., 'text_to_translate':..}, your response should ONLY consist of your translation"
 
 vars = {
@@ -78,33 +78,53 @@ for file in file_list:
         if _id not in id_cache:
             input_text = line
             input_text = re.sub(r'\[\,*\]', '', input_text)
-            batch.append(input_text)
-            id_dict = {ID_COL:_id}
-            batch_ids.append(id_dict)
-            words_counts.append(len(input_text.split(" ")))
+            wc = len(input_text.split(" "))
+            words_counts.append(wc)
 
-            # TODO: enable short/long batch processing
-            if (len(batch) == batch_size):
-                # Apply your function to the batch here
-                # Example: process_batch(batch)
-                translated_batch = translator.translate_batch(batch)
+            if (wc > MIN_LENGTH):
+                if (wc > MAX_LENGTH):
+                    # chop up the input_text in blocks of MAX_LENGTH//2
+                    chunks = []
+                    words = input_text.split()
+                    chunk_size = MAX_LENGTH // 2
 
-                batch = []
-                for i in range(len(batch_ids)):
-                    d = batch_ids[i].copy()  # Copy the original dictionary to avoid mutating it
-                    d.update({'text': translated_batch[i]['translated_text']})
-                    d.update({'approx_word_count_original': words_counts[i]})
-                    d.update({'approx_word_count_translated': len(translated_batch[i]['translated_text'].split(" "))})
-                    output_list.append(d)
+                    for i in range(0, len(words), chunk_size):
+                        chunk = " ".join(words[i:i+chunk_size])
+                        chunks.append(chunk)
 
-                with open(OUTPUT_LOC, 'a', encoding='latin-1') as output_file:
-                    for item in output_list:
-                        output_file.write(json.dumps(item) + '\n')
+                    for cdx, chunk in enumerate(chunks):
+                        batch.append(chunk)
+                        id_dict = {ID_COL: f"{_id}_{cdx}"}
+                        batch_ids.append(id_dict)
+                        words_counts.append(len(chunk.split()))
+                else:
+                    batch.append(input_text)
+                    id_dict = {ID_COL:_id}
+                    batch_ids.append(id_dict)
 
-                batch = []
-                batch_ids = []
-                output_list = []
-                words_counts = []
+                # TODO: enable short/long batch processing
+                if (len(batch) >= batch_size):
+                    # Apply your function to the batch here
+                    # Example: process_batch(batch)
+                    translated_batch = translator.translate_batch(batch)
+
+                    batch = []
+                    for i in range(len(batch_ids)):
+                        d = batch_ids[i].copy()  # Copy the original dictionary to avoid mutating it
+                        d.update({'text': translated_batch[i]['translated_text']})
+                        d.update({'approx_word_count_original': words_counts[i]})
+                        d.update({'approx_word_count_translated': len(translated_batch[i]['translated_text'].split(" "))})
+                        output_list.append(d)
+
+                    with open(OUTPUT_LOC, 'a', encoding='latin-1') as output_file:
+                        for item in output_list:
+                            output_file.write(json.dumps(item) + '\n')
+
+                    batch = []
+                    batch_ids = []
+                    output_list = []
+                    words_counts = []
+
 
     # Process any remaining lines in the last batch
     if batch:
