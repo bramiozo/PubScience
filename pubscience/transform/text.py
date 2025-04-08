@@ -52,7 +52,7 @@ class llm_input(BaseModel):
 
 def _get_available_google_models(google_gen) -> List[str]:
     available_models = []
-    for m in google_gen.list_models():
+    for m in google_gen.models.list():
         if 'generateContent' in m.supported_generation_methods:
             available_models.append(m.name)
     return available_models
@@ -64,7 +64,6 @@ class transform():
                  instruction_list: List[str],
                  provider: Literal['google', 'anthropic', 'openai', 'groq']=None,
                  model: str|None=None,
-                 n: int=1,
                  temperature: float=0.25,
                  batch_size: int=1,
                  max_tokens: int=5048):
@@ -75,7 +74,6 @@ class transform():
 
         self.system_prompt = system_prompt
         self.instruction_list = instruction_list
-        self.n = n
         self.max_tokens = max_tokens
         self.provider = provider
 
@@ -93,9 +91,9 @@ class transform():
 
 
         # TODO: add support for n>1
-        if n>1:
-            n = 1
-            raise NotImplementedError("Support for n>1 not yet implemented. Continuing with n=1.")
+        # if n>1:
+        #     n = 1
+        #     raise NotImplementedError("Support for n>1 not yet implemented. Continuing with n=1.")
 
         # parse yaml
         if isinstance(system_prompt,str):
@@ -127,11 +125,6 @@ class transform():
         elif provider == 'anthropic':
             self.client = anthropic_client(api_key=os.getenv('ANTHROPIC_LLM_API_KEY'))
         elif provider == 'google':
-            AvailableModels = _get_available_google_models(google_gen)
-
-            if f"models/{model}" not in AvailableModels:
-                raise ValueError(f"Model {model} not available. Available models are: {AvailableModels}")
-
             safety_settings=[
                 SafetySetting(category=HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold=HarmBlockThreshold.BLOCK_NONE),
                 SafetySetting(category=HarmCategory.HARM_CATEGORY_HARASSMENT, threshold=HarmBlockThreshold.BLOCK_NONE),
@@ -141,12 +134,16 @@ class transform():
             self.GoogleConfig = GenerateContentConfig(
                 system_instruction = self.system_prompt,
                 max_output_tokens = max_tokens,
-                temperature = temperature,
                 safety_settings = safety_settings,
                 **google_gen_kwargs,
             )
 
             self.client = google_gen.Client(api_key=os.getenv('GOOGLE_LLM_API_KEY'))
+
+            AvailableModels = _get_available_google_models(google_gen)
+
+            if f"models/{model}" not in AvailableModels:
+                raise ValueError(f"Model {model} not available. Available models are: {AvailableModels}")
         elif provider == 'groq':
             self.client = Groq(api_key=os.getenv('GROQ_LLM_API_KEY'))
 
@@ -263,7 +260,6 @@ def parse_folder_with_txt(arguments: argparse.Namespace):
                     instruction_list=arguments.instruction_list.split(",") if arguments.instruction_list else None,
                     provider=arguments.provider,
                     model=arguments.model,
-                    n=arguments.n,
                     max_tokens=arguments.max_tokens
                 )
                 trans = transformer(text)

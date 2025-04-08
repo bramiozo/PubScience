@@ -220,11 +220,6 @@ class TranslationLLM:
                 raise ValueError(f"Model {model} not available. Allowable models are: {anthropic_models}")
 
         elif provider == 'google':
-            AvailableModels = _get_available_google_models(google_gen)
-
-            if f"models/{model}" not in AvailableModels:
-                raise ValueError(f"Model {model} not available. Available models are: {AvailableModels}")
-
             safety_settings=[
                 SafetySetting(category=HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold=HarmBlockThreshold.BLOCK_NONE),
                 SafetySetting(category=HarmCategory.HARM_CATEGORY_HARASSMENT, threshold=HarmBlockThreshold.BLOCK_NONE),
@@ -239,6 +234,11 @@ class TranslationLLM:
             )
 
             self.client = google_gen.Client(api_key=os.getenv('GOOGLE_LLM_API_KEY'))
+            AvailableModels = _get_available_google_models(google_gen)
+
+            if f"models/{model}" not in AvailableModels:
+                raise ValueError(f"Model {model} not available. Available models are: {AvailableModels}")
+
         elif provider == 'groq':
             self.client = Groq(api_key=os.getenv('GROQ_LLM_API_KEY'))
             self.aclient = AsyncGroq(api_key=os.getenv('GROQ_LLM_API_KEY'))
