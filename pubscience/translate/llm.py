@@ -136,8 +136,7 @@ class llm_inputs(BaseModel):
 def _get_available_google_models(google_gen) -> List[str]:
     available_models = []
     for m in google_gen.models.list():
-        if 'generateContent' in m.supported_generation_methods:
-            available_models.append(m.name)
+        available_models.append(m.name)
     return available_models
 
 class TranslationLLM:
