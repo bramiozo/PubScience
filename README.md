@@ -28,6 +28,7 @@ Multiple components:
 * **Deduplicate** (S) remove exact and mark approximate duplicates
 * **Clean** the XML/JSON/.. etc. from the previous step and output cleaned text
 * **Translate** the pruned/cleaned text to any target language
+* **Transform** 
 * **Anonymize** replace PII-information by placeholder terms
 * **Share** make shareable through e.g. Huggingface
 * **Augment** Add paraphrasing
@@ -51,6 +52,8 @@ processing functions.
 | Deduplicate   |   [x]          | [ ]        |               |
 | Clean         |   [x]          | [ ]        |               |
 | Translate     |   [x]          | [ ]        |   *batch translation* |
+| Transform     |   [ ]          | [ ]        |               |
+| Label         |   [ ]          | [ ]        |  *first version based on Transform* |
 | Anonymise     |   [x]          | [ ]        |               |
 | Share         |   [ ]          | [ ]        |               |
 | Augment       |   [ ]          | [ ]        |  *paraphrase* |
@@ -97,6 +100,10 @@ Following the Llama3.1 recipe we use
 The core function here is the extract the _text intended to be read_.
 
 **Translate**: using NMT and translation APIs optionally in combination with glossaries translate corporate to a target language.
+
+**Transform**: on and off-premise LLM APIs to transform texts with multiple steps.
+
+**Label**: on and off-premise LLM APIs to extract labels from texts.
 
 **Anonymize**: replace PII-information by placeholder terms using deidentification libraries and optional custom patterns.
 
