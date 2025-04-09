@@ -53,8 +53,7 @@ class llm_input(BaseModel):
 def _get_available_google_models(google_gen) -> List[str]:
     available_models = []
     for m in google_gen.models.list():
-        if 'generateContent' in m.supported_generation_methods:
-            available_models.append(m.name)
+        available_models.append(m.name)
     return available_models
 
 
@@ -140,7 +139,7 @@ class transform():
 
             self.client = google_gen.Client(api_key=os.getenv('GOOGLE_LLM_API_KEY'))
 
-            AvailableModels = _get_available_google_models(google_gen)
+            AvailableModels = _get_available_google_models(self.client)
 
             if f"models/{model}" not in AvailableModels:
                 raise ValueError(f"Model {model} not available. Available models are: {AvailableModels}")
@@ -182,13 +181,12 @@ class transform():
                 contents=str(InputText),
                 config = self.GoogleConfig
             )
-            if response.parts:
+            if response.parsed is None:
                 return response.text.strip()
-
             else:
-                return f"No response from Google LLM.<ERROR>{str(response)}</ERROR>"
+                return f"No response from Google LLM.<ERROR>{str(response.prompt_feedback)}</ERROR>"
         except:
-            raise ValueError(f"Could not transform text with Google LLM for {InputText}")
+            raise ValueError(f"Could not transform text with Google LLM for {str(InputText)}")
 
     def __transform_anthropic(self, InputText: llm_input) -> Dict[str, Any]:
         response = self.client.messages.create(
