@@ -154,7 +154,21 @@ class transform():
                 raise ValueError(f"Model {model} not available. Available models are: {AvailableModels}")
         elif provider == 'groq':
             self.client = Groq(api_key=os.getenv('GROQ_LLM_API_KEY'))
+        elif provider == 'local':
+            # EuroLLM-9B-Instruct
+            # unsloth/Mixtral-8x7B-v0.1-bnb-4bit
+            from unsloth import FastLanguageModel
+            if model not in unsloth_models:
+                raise ValueError(f"""Model {model} not available.
+                    Available models are: {unsloth_models}.
+                    For more models see: https://huggingface.co/unsloth""")
 
+            self.client, self.tokenizer = FastLanguageModel.from_pretrained(model_name=model,
+                max_seq_length=max_tokens, load_in_4bit=True
+            )
+            FastLanguageModel.for_inference(self.client) # Enable native 2x faster inference
+        else:
+            raise ValueError(f"Unsupported provider: {provider}")
         #self.write_per_instruction = llm_settings.get('transformation').get('out_per_instruction', False)
         self.intermediate_outputs = []
 
