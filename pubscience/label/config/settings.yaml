@@ -11,14 +11,14 @@ cleaning:
   write_mode: w
 transformation:
   instructions:
-    - "Rewrite this radiology text and structure it as a summar for the cardiologist"
-    - "Extract from the summary whether the patient is positive/negative/unknown for macrovascular disease based on the radiologists assessment"
+    - "Rewrite this radiology text and structure it as a summary for the cardiologist"
+    - "Extract the label: macrovascular disease / NO vascular disease"
   method:
     llm:
       provider: openai #google
       model: gpt-4o #models/gemini-1.5-flash
       max_tokens: 4096
-      system_prompt: "You are a faithful and truthful label extractor in the medical/clinical domain. The user query is formatted as a dictionary {'instruction':...,  'text_to_transform':..}, your response should ONLY consist of your transformation/label, without the dictionary structure."
+      system_prompt: "You are a faithful and truthful label extractor in the medical/clinical domain. The user query is formatted as a dictionary {'instruction':...,  'text_to_label':..}, your response should ONLY consist of the label you extract."
     ntm:
       model: nllb200
     out_per_instruction: True
