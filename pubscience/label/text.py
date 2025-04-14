@@ -6,6 +6,7 @@ from typing import List
 from pydantic import BaseModel
 
 import os
+import re
 from anthropic.resources import Messages
 from dotenv import load_dotenv
 import benedict
@@ -66,7 +67,7 @@ def _get_available_google_models(google_gen) -> List[str]:
     return available_models
 
 
-class transform():
+class extract():
     def __init__(self,
                  system_prompt: str,
                  instruction_list: List[str],
@@ -79,6 +80,7 @@ class transform():
         assert(
             provider in ['google', 'anthropic', 'openai', 'groq']
         ), f"Provider {provider} not supported. Supported providers are: ['google', 'anthropic', 'openai', 'groq']"
+        
 
         self.system_prompt = system_prompt
         self.instruction_list = instruction_list
@@ -191,6 +193,8 @@ class transform():
             return self.__transform_google(InputText)
         elif self.provider == 'groq':
             return self.__transform_groq(InputText)
+        elif self.provider == 'local':
+            return self.__translate_local(InputText)
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")
 
@@ -241,6 +245,7 @@ class transform():
             model = self.model
         )
         return response.choices[0].message.content.strip()
+        
 
     def __transform_openai(self, InputText: llm_input) -> Dict[str, Any]:
         try:
@@ -264,12 +269,36 @@ class transform():
             raise ValueError(f"Rate limit reached. {e}")
 
         return response.choices[0].message.content.strip()
+        
+        
+    def __translate_local(self, InputText: llm_input) -> Dict[str, Any]:
+        _InputText = str(InputText)
+        inputs = self.tokenizer([
+            prompt_format.format(
+                self.system_prompt,
+                _InputText,
+                ""
+            )
+        ],
+            return_tensors="pt").to(self.device)
+
+        response = self.client.generate(
+            **inputs,
+            **self.gen_kwargs,
+            max_new_tokens = min(1.5*len(_InputText.split()), self.max_tokens),
+            use_cache=True,
+            pad_token_id = self.tokenizer.eos_token_id,
+        )
+
+        # TODO: add parser to extract only the response
+        return {'translated_text': self.tokenizer.batch_decode(response)[0].strip()}
 
 def parse_folder_with_txt(arguments: argparse.Namespace):
     list_of_files = os.listdir(arguments.folder_path)
     transformations = []
-
-    already_parsed = [fn.replace("_transformed", "").replace("_step1", "").replace("_step2", "") for fn in os.listdir(arguments.output_folder)]
+    
+    re_replace_steps = re.compile(r'\_step[-0-9]{1,2}')
+    already_parsed = [re_replace_steps.sub("", fn.replace("_transformed", "")) for fn in os.listdir(arguments.output_folder)]
 
     for fname in tqdm(list_of_files):
         if fname in already_parsed:
@@ -277,7 +306,7 @@ def parse_folder_with_txt(arguments: argparse.Namespace):
         if fname.endswith(".txt"):
             with open(os.path.join(arguments.folder_path, fname), 'r', encoding='utf-8') as f:
                 text = f.read()
-                transformer = transform(
+                transformer = extract(
                     system_prompt=arguments.system_prompt if arguments.system_prompt else None,
                     instruction_list=arguments.instruction_list.split(",") if arguments.instruction_list else None,
                     provider=arguments.provider,
@@ -286,11 +315,17 @@ def parse_folder_with_txt(arguments: argparse.Namespace):
                 )
                 trans = transformer(text)
                 transformations.append((fname, trans))
-
+            
             for k, _trans in enumerate(transformer.intermediate_outputs):
                 out_path = os.path.join(arguments.output_folder, fname.replace(".txt", f"_transformed_step{k+1}.txt"))
                 with open(out_path, 'w', encoding='utf-8') as f:
                     f.write(_trans)
+                    
+    output_json = {t[0]:t[1] for t in transformations}
+    with open(os.path.join(arguments.output_folder, 'Collected.json'), 'w') as fp
+        json.dump(output_json, fp)
+    return output_json
+    
 
 def parse_json(arguments: argparse.Namespace):
     try:
@@ -306,14 +341,15 @@ def parse_json(arguments: argparse.Namespace):
     with open(arguments.input_path, 'r', encoding='utf-8') as f:
         list_of_dicts = json.load(f)
 
-        _transformer = transform(
+        _transformer = extract(
                         system_prompt=arguments.system_prompt if arguments.system_prompt else None,
                         instruction_list=arguments.instruction_list.split(",") if arguments.instruction_list else None,
                         provider=arguments.provider,
                         model=arguments.model,
                         n=arguments.n,
-                        max_tokens=arguments.max_tokens)
-
+                        max_tokens=arguments.max_tokens
+                    )
+        transformations = []
         for d in tqdm(list_of_dicts):
             text = "\n".join([d[tf] for tf in arguments.text_fields])
             id = d[arguments.id_field]
@@ -322,7 +358,8 @@ def parse_json(arguments: argparse.Namespace):
                 continue
 
             try:
-                _ = _transformer(text)
+                trans = _transformer(text)
+                transformations.append((id, trans))
 
                 input_file_name = os.path.splitext(os.path.basename(arguments.input_path))[0]
                 out_path = os.path.join(arguments.output_folder, f"{input_file_name}_{arguments.model}.jsonl")
@@ -333,6 +370,12 @@ def parse_json(arguments: argparse.Namespace):
                     sleep(1)
             except Exception as e:
                 print(f"Error transforming text for {id}: {e}")
+                
+    output_json = {t[0]:t[1] for t in transformations}
+    with open(os.path.join(arguments.output_folder, 'Collected.json'), 'w') as fp
+        json.dump(output_json, fp)
+    return output_json
+    
 
 def parse_csv(arguments: argparse.Namespace):
     pass
