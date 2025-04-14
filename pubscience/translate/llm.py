@@ -47,7 +47,7 @@ Output: {'translated_text': bla,
          'target_lang': bla
          }
 """
-
+# mav23/EuroLLM-1.7B-GGUF
 unsloth_models = [
     "unsloth/mistral-7b-bnb-4bit",
     "unsloth/mistral-7b-instruct-v0.2-bnb-4bit",
