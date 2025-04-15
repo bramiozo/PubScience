@@ -39,15 +39,11 @@ load_dotenv(".env")
 # TODO: add support for bulk translations, using async methods.
 
 unsloth_models = [
+    "unsloth/gemma-3-1b-it-GGUF",
     "unsloth/mistral-7b-bnb-4bit",
     "unsloth/mistral-7b-instruct-v0.2-bnb-4bit",
-    "unsloth/llama-2-7b-bnb-4bit",
-    "unsloth/llama-2-13b-bnb-4bit",
-    "unsloth/codellama-34b-bnb-4bit",
-    "unsloth/tinyllama-bnb-4bit",
-    "unsloth/gemma-7b-bnb-4bit", # New Google 6 trillion tokens model 2.5x faster!
-    "unsloth/gemma-2b-bnb-4bit",
-    "unsloth/Llama-4-Scout-17B-16E-Instruct-unsloth-bnb-4bit"
+    "unsloth/Llama-4-Scout-17B-16E-Instruct-unsloth-bnb-4bit",
+    "unsloth/Phi-4-mini-instruct-GGUF"
 ]
 
 class llm_input(BaseModel):
@@ -59,11 +55,10 @@ class llm_input(BaseModel):
     def __repr__(self) -> str:
         return self.__str__()
 
-def _get_available_google_models(google_gen) -> List[str]:
+def _get_available_google_models(google_gen_client) -> List[str]:
     available_models = []
-    for m in google_gen.models.list():
-        if 'generateContent' in m.supported_generation_methods:
-            available_models.append(m.name)
+    for m in google_gen_client.models.list():
+        available_models.append(m.name)
     return available_models
 
 
@@ -71,16 +66,17 @@ class extract():
     def __init__(self,
                  system_prompt: str,
                  instruction_list: List[str],
-                 provider: Literal['google', 'anthropic', 'openai', 'groq']=None,
+                 provider: Literal['google', 'anthropic', 'openai', 'groq', 'local']='local',
                  model: str|None=None,
                  temperature: float=0.25,
                  batch_size: int=1,
                  max_tokens: int=5048):
 
         assert(
-            provider in ['google', 'anthropic', 'openai', 'groq']
-        ), f"Provider {provider} not supported. Supported providers are: ['google', 'anthropic', 'openai', 'groq']"
-        
+            provider in ['google', 'anthropic', 'openai', 'groq', 'local']
+        ), f"Provider {provider} not supported. Supported providers are: ['google', 'anthropic', 'openai', 'groq', 'local']"
+        assert isinstance(system_prompt,str),f"system_prompt must be a string"
+        assert isinstance(instruction_list,list),f"instruction_list must be a list"
 
         self.system_prompt = system_prompt
         self.instruction_list = instruction_list
@@ -106,7 +102,7 @@ class extract():
         #     raise NotImplementedError("Support for n>1 not yet implemented. Continuing with n=1.")
 
         # parse yaml
-        if isinstance(system_prompt,str):
+        if system_prompt.strip()!="":
             self.system_prompt = system_prompt
         else:
             try:
@@ -123,8 +119,7 @@ class extract():
             except Exception as e:
                 self.model = None
                 raise ValueError(f"Could not parse model from yaml: {e}. Please identify an available model from the provider.")
-
-        if isinstance(instruction_list, list) and all(isinstance(i, str) for i in instruction_list):
+        if all(isinstance(i, str) for i in instruction_list) & len(instruction_list) > 0:
             self.instruction_list = instruction_list
         else:
             self.instruction_list = llm_settings['transformation']['instructions']
@@ -150,7 +145,7 @@ class extract():
 
             self.client = google_gen.Client(api_key=os.getenv('GOOGLE_LLM_API_KEY'))
 
-            AvailableModels = _get_available_google_models(google_gen)
+            AvailableModels = _get_available_google_models(self.client)
 
             if f"models/{model}" not in AvailableModels:
                 raise ValueError(f"Model {model} not available. Available models are: {AvailableModels}")
@@ -208,13 +203,9 @@ class extract():
                 contents=str(InputText),
                 config = self.GoogleConfig
             )
-            if response.parts:
-                return response.text.strip()
-
-            else:
-                return f"No response from Google LLM.<ERROR>{str(response)}</ERROR>"
-        except:
-            raise ValueError(f"Could not transform text with Google LLM for {InputText}")
+            return response.text.strip()
+        except Exception as e:
+            raise ValueError(f"Could not transform text with Google LLM: {e}")
 
     def __transform_anthropic(self, InputText: llm_input) -> Dict[str, Any]:
         response = self.client.messages.create(
@@ -245,7 +236,7 @@ class extract():
             model = self.model
         )
         return response.choices[0].message.content.strip()
-        
+
 
     def __transform_openai(self, InputText: llm_input) -> Dict[str, Any]:
         try:
@@ -269,8 +260,8 @@ class extract():
             raise ValueError(f"Rate limit reached. {e}")
 
         return response.choices[0].message.content.strip()
-        
-        
+
+
     def __translate_local(self, InputText: llm_input) -> Dict[str, Any]:
         _InputText = str(InputText)
         inputs = self.tokenizer([
@@ -291,12 +282,12 @@ class extract():
         )
 
         # TODO: add parser to extract only the response
-        return {'translated_text': self.tokenizer.batch_decode(response)[0].strip()}
+        return self.tokenizer.batch_decode(response)[0].strip()
 
 def parse_folder_with_txt(arguments: argparse.Namespace):
     list_of_files = os.listdir(arguments.folder_path)
     transformations = []
-    
+
     re_replace_steps = re.compile(r'\_step[-0-9]{1,2}')
     already_parsed = [re_replace_steps.sub("", fn.replace("_transformed", "")) for fn in os.listdir(arguments.output_folder)]
 
@@ -307,30 +298,30 @@ def parse_folder_with_txt(arguments: argparse.Namespace):
             with open(os.path.join(arguments.folder_path, fname), 'r', encoding='utf-8') as f:
                 text = f.read()
                 transformer = extract(
-                    system_prompt=arguments.system_prompt if arguments.system_prompt else None,
-                    instruction_list=arguments.instruction_list.split(",") if arguments.instruction_list else None,
+                    system_prompt=arguments.system_prompt if arguments.system_prompt else "",
+                    instruction_list=arguments.instruction_list.split(",") if arguments.instruction_list else [],
                     provider=arguments.provider,
                     model=arguments.model,
                     max_tokens=arguments.max_tokens
                 )
                 trans = transformer(text)
                 transformations.append((fname, trans))
-            
+
             for k, _trans in enumerate(transformer.intermediate_outputs):
                 out_path = os.path.join(arguments.output_folder, fname.replace(".txt", f"_transformed_step{k+1}.txt"))
                 with open(out_path, 'w', encoding='utf-8') as f:
                     f.write(_trans)
-                    
+
     output_json = {t[0]:t[1] for t in transformations}
-    with open(os.path.join(arguments.output_folder, 'Collected.json'), 'w') as fp
+    with open(os.path.join(arguments.output_folder, 'Collected.json'), 'w') as fp:
         json.dump(output_json, fp)
     return output_json
-    
+
 
 def parse_json(arguments: argparse.Namespace):
+    input_file_name = os.path.splitext(os.path.basename(arguments.input_path))[0]
+    out_path = os.path.join(arguments.output_folder, f"{input_file_name}_{arguments.model}.jsonl")
     try:
-        input_file_name = os.path.splitext(os.path.basename(arguments.input_path))[0]
-        out_path = os.path.join(arguments.output_folder, f"{input_file_name}_{arguments.model}.jsonl")
         with open(out_path, 'r', encoding='utf-8') as f:
             list_of_dicts = [json.loads(d) for d in f.readlines()]
             id_cache = [d[arguments.id_field] for d in list_of_dicts]
@@ -340,13 +331,11 @@ def parse_json(arguments: argparse.Namespace):
 
     with open(arguments.input_path, 'r', encoding='utf-8') as f:
         list_of_dicts = json.load(f)
-
         _transformer = extract(
-                        system_prompt=arguments.system_prompt if arguments.system_prompt else None,
-                        instruction_list=arguments.instruction_list.split(",") if arguments.instruction_list else None,
+                        system_prompt=arguments.system_prompt if arguments.system_prompt else "",
+                        instruction_list=arguments.instruction_list.split(",") if arguments.instruction_list else [],
                         provider=arguments.provider,
                         model=arguments.model,
-                        n=arguments.n,
                         max_tokens=arguments.max_tokens
                     )
         transformations = []
@@ -370,12 +359,59 @@ def parse_json(arguments: argparse.Namespace):
                     sleep(1)
             except Exception as e:
                 print(f"Error transforming text for {id}: {e}")
-                
+
     output_json = {t[0]:t[1] for t in transformations}
-    with open(os.path.join(arguments.output_folder, 'Collected.json'), 'w') as fp
+    with open(os.path.join(arguments.output_folder, 'Collected.json'), 'w') as fp:
         json.dump(output_json, fp)
     return output_json
-    
+
+def parse_txt(arguments: argparse.Namespace):
+    # .txt file with a document per line
+    input_file_name = os.path.splitext(os.path.basename(arguments.input_path))[0]
+    out_path = os.path.join(arguments.output_folder, f"{input_file_name}_{arguments.model}.jsonl")
+    try:
+        with open(out_path, 'r', encoding='utf-8') as f:
+            list_of_dicts = [json.loads(d) for d in f.readlines()]
+            id_cache = [int(d["id"]) for d in list_of_dicts]
+    except Exception as e:
+        id_cache = []
+        print(f"First run for this input file, continuing with {out_path}. Error: {e}")
+
+    with open(arguments.input_path, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+        _transformer = extract(
+                        system_prompt=arguments.system_prompt if arguments.system_prompt else "",
+                        instruction_list=arguments.instruction_list.split(",") if arguments.instruction_list else [],
+                        provider=arguments.provider,
+                        model=arguments.model,
+                        max_tokens=arguments.max_tokens
+                    )
+        transformations = []
+        for idx, text in tqdm(enumerate(lines)):
+            text = text.strip()
+
+            if (idx in id_cache) | (not text) | (text.strip()==""):
+                continue
+
+            try:
+                trans = _transformer(text)
+                transformations.append((idx, trans))
+
+                input_file_name = os.path.splitext(os.path.basename(arguments.input_path))[0]
+                out_path = os.path.join(arguments.output_folder, f"{input_file_name}_{arguments.model}.jsonl")
+                with open(out_path, 'a', encoding='utf-8') as f:
+                    for k, _trans in enumerate(_transformer.intermediate_outputs):
+                        json_line = json.dumps({"id": idx, "k": k, "transformed_text": _trans})
+                        f.write(json_line + "\n")
+                    sleep(1)
+            except Exception as e:
+                print(f"Error transforming text for line {idx}: {e}")
+
+    output_json = {str(t[0]):t[1] for t in transformations}
+    with open(os.path.join(arguments.output_folder, 'Collected.json'), 'w') as fp:
+        json.dump(output_json, fp)
+    return output_json
+
 
 def parse_csv(arguments: argparse.Namespace):
     pass
@@ -405,14 +441,18 @@ if __name__ == '__main__':
     elif args.input_path:
         if not args.output_folder:
             raise ValueError("Please provide an output folder")
-        parse_json(args)
+        if args.input_path.endswith('.json'):
+            parse_json(args)
+        elif args.input_path.endswith('.txt'):
+            parse_txt(args)
+        else:
+            raise ValueError("Input path must be a json or txt file")
     else:
-        transformer = text.transform(
-            system_prompt=args.system_prompt if args.system_prompt else None,
-            instruction_list=args.instruction_list.split(",") if args.instruction_list else None,
+        transformer = extract(
+            system_prompt=args.system_prompt if args.system_prompt else "",
+            instruction_list=args.instruction_list.split(",") if args.instruction_list else [],
             provider=args.provider,
             model=args.model,
-            n=args.n,
             max_tokens=args.max_tokens
         )
         print(transformer("A 64-year-old female patient with a history of hyperthyroidism on treatment (thiamazole 5 mg once daily, and levothyroxine 62 μg once daily, currently euthyroid with normal thyroid-stimulating hormone, free thyroxine), was referred to our department from a regional hospital following a spider bite, which took place in western Greece (Aetolia-Acarnania region). The bite occurred in the pre-tibial area of the left lower extremity, while cleaning a building in a rural area, early November of 2013. The spider was described as black with red marks, about 2 cm in size and although it was not preserved for identification, the description as well as the clinical signs suggested European black widow spider envenomation."))

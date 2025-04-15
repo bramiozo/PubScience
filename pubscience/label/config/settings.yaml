@@ -12,7 +12,7 @@ cleaning:
 transformation:
   instructions:
     - "Rewrite this radiology text and structure it as a summary for the cardiologist"
-    - "Extract the label: macrovascular disease / NO vascular disease"
+    - "Extract the label: macrovascular disease / NO vascular disease / not related to cardiology"
   method:
     llm:
       provider: openai #google

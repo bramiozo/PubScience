@@ -9,7 +9,6 @@ import benedict
 import asyncio
 
 import google.genai as google_gen
-
 from google.genai.types import (
     HarmCategory,
     HarmBlockThreshold,

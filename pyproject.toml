@@ -38,7 +38,8 @@ bitsandbytes = "^0.45.0"
 cachetools = "^5.5.0"
 sacremoses = "^0.1.1"
 httpx = "^0.28.1"
-xformers = { url = "https://download.pytorch.org/whl/cu124/xformers-0.0.29.post1-cp312-cp312-win_amd64.whl" }
+xformers = "^0.0.29"
+#{ url = "https://download.pytorch.org/whl/cu124/xformers-0.0.29.post1-cp312-cp312-win_amd64.whl" }
 deduce = "^3.0.3"
 phonenumbers = "^8.13.52"
 scikit-learn = "^1.6.0"
