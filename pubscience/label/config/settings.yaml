@@ -11,7 +11,7 @@ cleaning:
   write_mode: w
 transformation:
   instructions:
-    - "Rewrite this radiology text and structure it as a summar for the cardiologist"
+    - "Rewrite this radiology text and structure it as a summary for the cardiologist"
     - "Extract from the summary whether the patient is positive/negative/unknown for macrovascular disease based on the radiologists assessment"
   method:
     llm:
