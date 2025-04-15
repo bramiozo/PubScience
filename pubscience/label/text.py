@@ -37,6 +37,7 @@ import argparse
 load_dotenv(".env")
 
 # TODO: add support for bulk translations, using async methods.
+# TODO: add option for vLLM and ollama
 
 unsloth_models = [
     "unsloth/gemma-3-1b-it-GGUF",
@@ -327,7 +328,7 @@ def parse_json(arguments: argparse.Namespace):
             id_cache = [d[arguments.id_field] for d in list_of_dicts]
     except Exception as e:
         id_cache = []
-        print(f"First run for this input file, continuing with {out_path}. Errpr: {e}")
+        print(f"First run for this input file, continuing with {out_path}. Error: {e}")
 
     with open(arguments.input_path, 'r', encoding='utf-8') as f:
         list_of_dicts = json.load(f)
@@ -339,9 +340,53 @@ def parse_json(arguments: argparse.Namespace):
                         max_tokens=arguments.max_tokens
                     )
         transformations = []
+        for id, text in tqdm(list_of_dicts.items()):
+            if (id in id_cache) | (not text) | (text.strip()==""):
+                continue
+
+            try:
+                trans = _transformer(text)
+                transformations.append((id, trans))
+
+                input_file_name = os.path.splitext(os.path.basename(arguments.input_path))[0]
+                out_path = os.path.join(arguments.output_folder, f"{input_file_name}_{arguments.model}.jsonl")
+                with open(out_path, 'a', encoding='utf-8') as f:
+                    for k, _trans in enumerate(_transformer.intermediate_outputs):
+                        json_line = json.dumps({arguments.id_field: id, "k": k, "extraction": _trans})
+                        f.write(json_line + "\n")
+                    sleep(1)
+            except Exception as e:
+                print(f"Error transforming text for {id}: {e}")
+
+    output_json = {t[0]:t[1] for t in transformations}
+    with open(os.path.join(arguments.output_folder, 'Collected.json'), 'w') as fp:
+        json.dump(output_json, fp)
+    return output_json
+
+def parse_jsonl(arguments: argparse.Namespace):
+    input_file_name = os.path.splitext(os.path.basename(arguments.input_path))[0]
+    out_path = os.path.join(arguments.output_folder, f"{input_file_name}_{arguments.model}.jsonl")
+    try:
+        with open(out_path, 'r', encoding='utf-8') as f:
+            list_of_dicts = [json.loads(d) for d in f.readlines()]
+            id_cache = [d[arguments.id_field] for d in list_of_dicts]
+    except Exception as e:
+        id_cache = []
+        print(f"First run for this input file, continuing with {out_path}. Errpr: {e}")
+
+    with open(arguments.input_path, 'r', encoding='utf-8') as f:
+        list_of_dicts = [json.loads(d) for d in f.readlines()]
+        _transformer = extract(
+                        system_prompt=arguments.system_prompt if arguments.system_prompt else "",
+                        instruction_list=arguments.instruction_list.split(",") if arguments.instruction_list else [],
+                        provider=arguments.provider,
+                        model=arguments.model,
+                        max_tokens=arguments.max_tokens
+                    )
+        transformations = []
         for d in tqdm(list_of_dicts):
-            text = "\n".join([d[tf] for tf in arguments.text_fields])
             id = d[arguments.id_field]
+            text = "\n".join([d[tfield] for tfield in arguments.text_fields if tfield in d])
 
             if (id in id_cache) | (not text) | (text.strip()==""):
                 continue
@@ -364,6 +409,7 @@ def parse_json(arguments: argparse.Namespace):
     with open(os.path.join(arguments.output_folder, 'Collected.json'), 'w') as fp:
         json.dump(output_json, fp)
     return output_json
+
 
 def parse_txt(arguments: argparse.Namespace):
     # .txt file with a document per line
@@ -423,7 +469,6 @@ if __name__ == '__main__':
     parser.add_argument('--instruction_list', type=str, help='List of instructions for the LLM, items separated by commas', default=None)
     parser.add_argument('--provider', type=str, help='Provider for the LLM', default='google')
     parser.add_argument('--model', type=str, help='Model for the LLM', default='gemini-1.5-flash')
-    parser.add_argument('--n', type=int, help='Number of instructions to apply', default=1)
     parser.add_argument('--max_tokens', type=int, help='Maximum tokens for the LLM', default=8_000)
     parser.add_argument('--folder_path', type=str, help='Path to folder with .txt files', default=None)
     parser.add_argument('--input_path', type=str, help='Path to input json', default=None)
@@ -443,6 +488,8 @@ if __name__ == '__main__':
             raise ValueError("Please provide an output folder")
         if args.input_path.endswith('.json'):
             parse_json(args)
+        elif args.input_path.endswith('.jsonl'):
+            parse_jsonl(args)
         elif args.input_path.endswith('.txt'):
             parse_txt(args)
         else:
