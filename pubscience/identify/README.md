@@ -1,5 +1,7 @@
 # Identify
 
 Identify relevant documents:
-* rule-based
+* rule-based:
+  * keyword presence
+  * phrase presence
 * classification-based
