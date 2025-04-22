@@ -12,9 +12,10 @@ cleaning:
 transformation:
   instructions:
     - "Rewrite this Dutch radiology text and structure it as a pointwise summary for the cardiologist"
-    - "We want to know whether a radiologist identifies macrovascular or functional heart disease. Extract the label: macrovascular disease / functional disease / NO vascular disease / not related to cardiology"
+    - "We want to know whether a radiologist identifies macrovascular or functional heart disease. Specifically; Macrovascular disease: a positive for macrovascular disease is any indication of the presence of 'significante stenosis', 'vaatlijden', 'stenosis >=50%', 'MESA > 75%', 'occlusie', 'atherosclerose', 'CADRADS >2'. Functional disease: a positive for macrovascular disease is any indication of the presence of cardiomyopathy, perfusion defect, delayed enhancement, hypo perfusion, infarction, ischemic heart disease, Ejection Fraction (EF)<50%.No vascular disease: if there is no indication of macrovascular or functional heart disease, and explicitly if the radiologist states that there is no vascular disease, or that the heart is normal, or the coronary arteries are normal, or that the scan is clean, or that nothing of interest was observed. Not related to cardiology: if the text is not related to cardiology, for example, if it is a report about a lung scan or a scan of the abdomen. Your task, extract the label: macrovascular disease / functional disease / NO vascular disease / not related to cardiology. Note, it is possible that both macrovascular and functional heart disease are present. In that case, please flag both labels."
   method:
     llm:
+      endpoint: https://api.openai.com/v1/chat/completions #https://gemini.googleapis.com/v1/chat/completions
       provider: openai #google
       model: gpt-4o #models/gemini-1.5-flash
       max_tokens: 4096
