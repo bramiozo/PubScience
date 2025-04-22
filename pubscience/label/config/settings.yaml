@@ -12,7 +12,7 @@ cleaning:
 transformation:
   instructions:
     - "Rewrite this Dutch radiology text and structure it as a pointwise summary for the cardiologist"
-    - "We want to know whether a radiologist identifies macrovascular disease. Extract the label: macrovascular disease / microvascular disease / NO vascular disease / not related to cardiology"
+    - "We want to know whether a radiologist identifies macrovascular or functional heart disease. Extract the label: macrovascular disease / functional disease / NO vascular disease / not related to cardiology"
   method:
     llm:
       provider: openai #google
