@@ -457,6 +457,7 @@ As part of Dutch clinical texts
 * [SciFact](https://huggingface.co/datasets/bigbio/scifact)
 * [Mediqa QA](https://huggingface.co/datasets/bigbio/mediqa_qa)
 * [MedHop](https://huggingface.co/datasets/bigbio/medhop)
+* [MedHopQA](https://www.ncbi.nlm.nih.gov/research/bionlp/medhopqa#participation)
 * [MedDialog](https://huggingface.co/datasets/bigbio/meddialog)
 * [Evidence Inference](https://huggingface.co/datasets/bigbio/evidence_inference)
 * [BioMRC](https://huggingface.co/datasets/bigbio/biomrc)
