@@ -345,7 +345,8 @@ class Identify:
             os.makedirs(os.path.dirname(self.output_file))
 
         with open(self.output_file, 'a') as f:
-            json.dump(self.included_documents, f)
+            for doc in self.included_documents:
+                f.write(json.dumps(doc) + '\n')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Identify relevant content in XML documents")
