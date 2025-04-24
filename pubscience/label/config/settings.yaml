@@ -12,13 +12,13 @@ cleaning:
 transformation:
   instructions:
     - "Rewrite this Dutch radiology text and structure it as a pointwise summary for the cardiologist"
-    - "We want to know whether a radiologist identifies macrovascular disease. Extract the label: macrovascular disease / microvascular disease / NO vascular disease / not related to cardiology"
+    - "We want to know whether a radiologist identifies macrovascular/functional disease. Extract the label: macrovascular disease / functional disease / NO vascular disease / not related to cardiology. \n Macrovascular disease: any confirmation of significant stenosis or significant occlusion, explicit mentioning of vascular disease, any mentioning of a previous vascular intervention like stents/PTCA etc, any advise for a follow up diagnosis like angiogram or a vascular intervention \n Functional disease: any confirmation of ischemia, functional flow problems or cardiomyopathy, or an advise to perform e.g. a . \n No vascular disease: any mentioning of a clean scan, or no special findings. Not related to cardiology: e.g. bone-scans, CT-scans of lungs, etc. \n"
   method:
     llm:
       provider: openai #google
       model: gpt-4o #models/gemini-1.5-flash
       max_tokens: 4096
-      system_prompt: "You are a faithful and truthful label extractor in the cardio medical/clinical domain."
+      system_prompt: "You are a faithful and truthful label extractor in the cardio medical/clinical domain. "
     ntm:
       model: nllb200
     out_per_instruction: True

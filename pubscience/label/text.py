@@ -69,7 +69,7 @@ class extract():
                  instruction_list: List[str],
                  provider: Literal['google', 'anthropic', 'openai', 'groq', 'local']='local',
                  model: str|None=None,
-                 temperature: float=0.25,
+                 temperature: float=0.01,
                  batch_size: int=1,
                  max_tokens: int=5048):
 
@@ -95,7 +95,7 @@ class extract():
             'presence_penalty': 0.25,
             'candidate_count': 1
         }
-
+        self.temperature = temperature
 
         # TODO: add support for n>1
         # if n>1:
@@ -211,7 +211,7 @@ class extract():
     def __transform_anthropic(self, InputText: llm_input) -> Dict[str, Any]:
         response = self.client.messages.create(
             model=self.model,
-            temperature=0.1,
+            temperature=self.temperature,
             system= f"{self.system_prompt}",
             messages=[{
                 "role": "user",
@@ -438,7 +438,7 @@ def parse_txt(arguments: argparse.Namespace):
 
             if (idx in id_cache) | (not text) | (text.strip()==""):
                 continue
-
+            sleep(1)
             try:
                 trans = _transformer(text)
                 transformations.append((idx, trans))
