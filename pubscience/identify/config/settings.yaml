@@ -1,2 +1,5 @@
-inclusion_terms: []
-exclusion_terms: []
+inclusion_terms:
+  ["cardiologie", "cardiale", "atherosclerose", "cardiomyopathie", "STEMI", "aderverkalking", "hartinfarct"]
+exclusion_terms: ["feesten", "showbusiness", "huizen", "auto", "commercieel", "marketing", "winst"]
+file_splitter:
+  gigacorpus: r"[a-z0-9\-]{40,70}"
