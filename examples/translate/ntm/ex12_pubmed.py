@@ -21,6 +21,7 @@ import re
 import tempfile
 import shutil
 import logging
+import argparse
 from typing import List, Dict, Any, Optional, Literal
 import ftfy
 
@@ -50,11 +51,13 @@ class PubMedProcessor:
                  max_length: int = 496,
                  target_lang: str = 'nld_Latn',
                  output_dir: str = './output', 
-                 temp_dir: str = './temp'):
+                 temp_dir: str = './temp',
+                 batch_size: int = 16):
         """Initialize the processor."""
         self.model_name = model_name
         self.max_length = max_length
         self.target_lang = target_lang
+        self.batch_size = batch_size
         self.output_dir = Path(output_dir)
         self.temp_dir = Path(temp_dir)
         self.output_dir.mkdir(exist_ok=True)
@@ -234,7 +237,6 @@ class PubMedProcessor:
         
         processed_count = 0
         batch = []
-        batch_size = 16
         
         with open(output_file, 'w', encoding='utf-8') as f:
             for xml_file in xml_files:
@@ -247,7 +249,7 @@ class PubMedProcessor:
                     batch.append(data)
                     
                     # Process batch when it reaches batch_size
-                    if len(batch) >= batch_size:
+                    if len(batch) >= self.batch_size:
                         self.translate_and_write_batch(batch, f)
                         processed_count += len(batch)
                         batch = []
@@ -271,7 +273,7 @@ class PubMedProcessor:
             texts = [item['text'] for item in batch]
             
             # Translate batch
-            translated_texts = self.translator.translate_long_batch(texts, batch_size=16)
+            translated_texts = self.translator.translate_long_batch(texts, batch_size=self.batch_size)
             
             # Write results
             for i, translated_text in enumerate(translated_texts):
@@ -357,14 +359,106 @@ class PubMedProcessor:
             # Clean up temp directory
             shutil.rmtree(self.temp_dir, ignore_errors=True)
 
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description="PubMed XML Processing and Translation Script",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python ex12_pubmed.py
+  python ex12_pubmed.py --model-name facebook/nllb-200-distilled-600M --max-length 1024
+  python ex12_pubmed.py --target-lang fra_Latn --batch-size 8 --output-dir ./french_output
+        """
+    )
+    
+    parser.add_argument(
+        '--model-name',
+        type=str,
+        default='vvn/en-to-dutch-marianmt',
+        choices=[
+            "facebook/nllb-200-3.3B",
+            "facebook/nllb-200-distilled-600M",
+            "facebook/m2m100_418M",
+            "google/madlad400-3b-mt",
+            "facebook/mbart-large-50-many-to-many-mmt",
+            "vvn/en-to-dutch-marianmt"
+        ],
+        help='Translation model to use (default: vvn/en-to-dutch-marianmt)'
+    )
+    
+    parser.add_argument(
+        '--max-length',
+        type=int,
+        default=496,
+        help='Maximum sequence length for translation (default: 496)'
+    )
+    
+    parser.add_argument(
+        '--target-lang',
+        type=str,
+        default='nld_Latn',
+        help='Target language code (default: nld_Latn for Dutch)'
+    )
+    
+    parser.add_argument(
+        '--output-dir',
+        type=str,
+        default='./output',
+        help='Output directory for JSONL files (default: ./output)'
+    )
+    
+    parser.add_argument(
+        '--temp-dir',
+        type=str,
+        default='./temp',
+        help='Temporary directory for downloads and extraction (default: ./temp)'
+    )
+    
+    parser.add_argument(
+        '--batch-size',
+        type=int,
+        default=16,
+        help='Batch size for translation processing (default: 16)'
+    )
+    
+    parser.add_argument(
+        '--log-level',
+        type=str,
+        default='INFO',
+        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+        help='Logging level (default: INFO)'
+    )
+    
+    return parser.parse_args()
+
+
 def main():
     """Main entry point."""
+    args = parse_args()
+    
+    # Set logging level
+    logging.getLogger().setLevel(getattr(logging, args.log_level))
+    
+    # Log the configuration
+    logger.info(f"Starting PubMed processor with configuration:")
+    logger.info(f"  Model: {args.model_name}")
+    logger.info(f"  Max length: {args.max_length}")
+    logger.info(f"  Target language: {args.target_lang}")
+    logger.info(f"  Batch size: {args.batch_size}")
+    logger.info(f"  Output directory: {args.output_dir}")
+    logger.info(f"  Temp directory: {args.temp_dir}")
+    
     processor = PubMedProcessor(
-        model_name='vvn/en-to-dutch-marianmt',
-        max_length=496,
-        target_lang='nld_Latn'
+        model_name=args.model_name,
+        max_length=args.max_length,
+        target_lang=args.target_lang,
+        output_dir=args.output_dir,
+        temp_dir=args.temp_dir,
+        batch_size=args.batch_size
     )
     processor.run()
+
 
 if __name__ == "__main__":
     main()
