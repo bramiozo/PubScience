@@ -16,7 +16,8 @@
 *.tar
 *.env
 auth/*
-sandbox/*
+*.log
+*.pkl
 artifacts/*
 .env
 pyrightconfig.json
