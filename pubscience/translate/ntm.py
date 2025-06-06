@@ -71,7 +71,8 @@ class TranslationNTM:
             'no_repeat_ngram_size': 0,
             'num_return_sequences': 1,
         }
-        if model_name not in ["vvn/en-to-dutch-marianmt"]:
+        if model_name not in ["vvn/en-to-dutch-marianmt","facebook/nllb-200-3.3B",
+                                "facebook/nllb-200-distilled-600M"]:
             self.gen_kwargs.update({
                 'top_p': 0.95,
                 'temperature': temperature
@@ -149,7 +150,15 @@ class TranslationNTM:
 
     def load_model(self):
             if self.use_gpu:
-                self.device = "cuda:0" if (torch.cuda.is_available()) & (torch.cuda.device_count()==1) else "cpu"
+                if torch.cuda.is_available():
+                    device_count = torch.cuda.device_count()
+                    if device_count == 1:
+                        self.device = "cuda:0"
+                    else:
+                        # If multiple devices available, use the first one but could be configured
+                        self.device = f"cuda:{torch.cuda.current_device()}"
+                else:
+                    self.device = "cpu"
                 _device = self.device
                 logger.info("MODEL LOADED ON GPU")
             else:
