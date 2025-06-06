@@ -10,6 +10,12 @@ from typing import List, Literal, Dict, Tuple, Any
 import nltk
 import pysbd
 import re
+
+from accelerate import Accelerator
+from accelerate.utils import gather_object
+import torch.distributed as dist
+import torch.multiprocessing as mp
+
 nltk.download('punkt_tab')
 
 import logging
@@ -37,12 +43,24 @@ class TranslationNTM:
                  sentence_splitter: Literal['nltk', 'pysbd']='pysbd',
                  num_beams: int=5,
                  use_quantisation: bool=False,
-                 temperature: float=0.49
+                 temperature: float=0.49,
+                 use_accelerate: bool=False
                  #max_new_tokens: int=256
                  ):
 
 
         logger.info(f"Initialising translation with {model_name} \n\n")
+
+        # Initialize accelerator first
+        if use_accelerate and torch.cuda.device_count() > 1:
+            logger.info("Multiple GPUs found, using Accelerator for inference")
+            self.accelerator = Accelerator()
+            self.use_accelerate = True
+        else:
+            if torch.cuda.device_count() > 1:
+                logger.info("Multiple GPUs found, consider using Accelerator")
+            self.accelerator = None
+            self.use_accelerate = False
 
         self.sentence_splitter = sentence_splitter
         self.model_name = model_name
@@ -153,6 +171,17 @@ class TranslationNTM:
 
 
     def load_model(self):
+        if  self.use_accelerate and self.accelerator:
+            # Let accelerate handle device placement
+            self.model = AutoModelForSeq2SeqLM.from_pretrained(
+                self.model_name,
+                torch_dtype=torch.float32,
+                quantization_config=self.quant_config
+            )
+            # Prepare model with accelerate
+            self.model = self.accelerator.prepare(self.model)
+            self.device = self.accelerator.device
+        else:
             if self.use_gpu:
                 if torch.cuda.is_available():
                     device_count = torch.cuda.device_count()
@@ -161,6 +190,7 @@ class TranslationNTM:
                     else:
                         # If multiple devices available, use the first one but could be configured
                         self.device = f"cuda:{torch.cuda.current_device()}"
+
                 else:
                     self.device = "cpu"
                 _device = self.device
@@ -204,7 +234,7 @@ class TranslationNTM:
                     raise ValueError(f"Unexpected error while loading model: {e}")
             self.model.eval()
 
-            return self.model
+        return self.model
 
     def translate(self, text: str) -> str:
         inputs = self.tokenizer(text, return_tensors="pt",
@@ -236,6 +266,49 @@ class TranslationNTM:
                         **self.gen_kwargs)
             translated_texts = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
             return translated_texts
+
+    def translate_batch_distributed(self, texts: List[str], batch_size: int = 8) -> List[str]:
+        """
+        Multi-GPU batch translation using Accelerate
+        """
+        if not self.use_accelerate:
+            return self.translate_batch(texts)
+
+        # Split texts across processes
+        with self.accelerator.split_between_processes(texts) as local_texts:
+            local_results = []
+
+            for i in range(0, len(local_texts), batch_size):
+                batch_texts = local_texts[i:i + batch_size]
+
+                inputs = self.tokenizer(
+                    batch_texts,
+                    return_tensors="pt",
+                    max_length=self.max_length,
+                    padding='longest',
+                    truncation=True
+                )
+
+                # Use accelerator's send_to_device method
+                inputs = self.accelerator.send_to_device(inputs)
+
+                with torch.no_grad():
+                    if self.multilingual:
+                        outputs = self.model.generate(
+                            **inputs,
+                            **self.gen_kwargs,
+                            forced_bos_token_id=self.forced_bos_token_id
+                        )
+                    else:
+                        outputs = self.model.generate(**inputs, **self.gen_kwargs)
+
+                    batch_translations = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
+                    local_results.extend(batch_translations)
+
+        # Gather results from all processes
+        all_results = gather_object(local_results)
+        return all_results
+
 
     def translate_long(self, text: str) -> str:
         if self.sentence_splitter == 'nltk':
@@ -349,7 +422,10 @@ class TranslationNTM:
             translated_paragraphs = []
 
             chunks = self._prepare_chunks(sentences)
-            translated_chunks = self._translate_chunks_batch(chunks, batch_size)
+            if self.use_accelerate:
+                translated_chunks = self.translate_batch_distributed(chunks, batch_size)
+            else:
+                translated_chunks = self._translate_chunks_batch(chunks, batch_size)
             translated_paragraph = " ".join(translated_chunks)
             translated_paragraphs.append(translated_paragraph)
 
@@ -446,16 +522,23 @@ class TranslationNTM:
                 chunks.append(current_chunk_tokens)
 
             # Translate chunks in batches
-            translated_chunks = []
-            for i in range(0, len(chunks), batch_size):
-                batch_chunks = chunks[i:i + batch_size]
-                batch_texts = [self.tokenizer.decode(chunk_tokens, skip_special_tokens=True) for chunk_tokens in batch_chunks]
-                inputs = self.tokenizer(batch_texts, return_tensors="pt", truncation=True, max_length=self.max_length, padding='longest').to(self._input_device)
-                with torch.no_grad():
-                    translated = self.model.generate(**inputs, **self.gen_kwargs,
-                       forced_bos_token_id=self.forced_bos_token_id)
-                    batch_translations = self.tokenizer.batch_decode(translated, skip_special_tokens=True)
-                translated_chunks.extend(batch_translations)
+            # Translate chunks in batches
+            if self.use_accelerate:
+                # Convert chunk tokens back to text for accelerate processing
+                chunk_texts = [self.tokenizer.decode(chunk_tokens, skip_special_tokens=True) for chunk_tokens in chunks]
+                translated_chunks = self.translate_batch_distributed(chunk_texts, batch_size)
+            else:
+                translated_chunks = []
+                for i in range(0, len(chunks), batch_size):
+                    batch_chunks = chunks[i:i + batch_size]
+                    batch_texts = [self.tokenizer.decode(chunk_tokens, skip_special_tokens=True) for chunk_tokens in batch_chunks]
+                    inputs = self.tokenizer(batch_texts, return_tensors="pt", truncation=True, max_length=self.max_length, padding='longest').to(self._input_device)
+                    with torch.no_grad():
+                        translated = self.model.generate(**inputs, **self.gen_kwargs,
+                        forced_bos_token_id=self.forced_bos_token_id)
+                        batch_translations = self.tokenizer.batch_decode(translated, skip_special_tokens=True)
+                    translated_chunks.extend(batch_translations)
+
 
             # Assemble translated text
             translated_text = " ".join(translated_chunks)
