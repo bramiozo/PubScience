@@ -52,7 +52,8 @@ class PubMedProcessor:
                  target_lang: str = 'nld_Latn',
                  output_dir: str = './output',
                  temp_dir: str = './temp',
-                 batch_size: int = 16):
+                 batch_size: int = 16,
+                 multi_gpu: bool=False):
         """Initialize the processor."""
         self.model_name = model_name
         self.max_length = max_length
@@ -71,7 +72,8 @@ class PubMedProcessor:
             multilingual=multilingual,
             max_length=max_length,
             use_gpu=True,
-            target_lang=target_lang
+            target_lang=target_lang,
+            use_accelerate=multi_gpu
         )
 
     def get_tar_gz_files(self, server_path: str) -> List[str]:
@@ -446,6 +448,12 @@ Examples:
         help='Logging level (default: INFO)'
     )
 
+    parser.add_argument(
+        '--multi_gpu',
+        action='store_true',
+        default=False
+    )
+
     return parser.parse_args()
 
 
@@ -471,7 +479,8 @@ def main():
         target_lang=args.target_lang,
         output_dir=args.output_dir,
         temp_dir=args.temp_dir,
-        batch_size=args.batch_size
+        batch_size=args.batch_size,
+        multi_gpu=args.multi_gpu
     )
     processor.run()
 
