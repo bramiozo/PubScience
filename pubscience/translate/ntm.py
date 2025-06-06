@@ -139,6 +139,10 @@ class TranslationNTM:
         logger.info(f"Model configuration: {self.model.config}")
         self.config = self.model.config
 
+    def _input_device(self):
+       # Grab the device of the first model parameter
+       return next(self.model.parameters()).device
+
     def reset(self):
         """
             Empty GPU memory/cache
@@ -204,7 +208,7 @@ class TranslationNTM:
 
     def translate(self, text: str) -> str:
         inputs = self.tokenizer(text, return_tensors="pt",
-            padding=True, max_length=self.max_length, truncation=True).to(self.device)
+            padding=True, max_length=self.max_length, truncation=True).to(self._input_device)
         if self.multilingual:
             outputs = self.model.generate(**inputs,
                 **self.gen_kwargs,
@@ -219,7 +223,7 @@ class TranslationNTM:
                                     return_tensors="pt",
                                     max_length=self.max_length,
                                     padding='longest',
-                                    truncation=True).to(self.device)
+                                    truncation=True).to(self._input_device)
             if self.multilingual:
                 with torch.no_grad():
                     outputs = self.model.generate(**inputs,
@@ -308,7 +312,7 @@ class TranslationNTM:
             truncation=False,  # Disable truncation to prevent input loss
             max_length=None,  # Ensure max_length does not enforce truncation
             padding='longest'
-        ).to(self.device)
+        ).to(self._input_device)
 
         input_token_length = inputs['input_ids'].shape[1]
         model_max_length = self.model.config.max_position_embeddings
@@ -323,7 +327,7 @@ class TranslationNTM:
                 truncation=True,
                 max_length=self.max_length,
                 padding='longest'
-            ).to(self.device)
+            ).to(self._input_device)
 
         # Generate translation with specified max_new_tokens
         with torch.no_grad():
@@ -394,7 +398,7 @@ class TranslationNTM:
 
         for i in range(0, len(chunks), batch_size):
             batch_chunks = chunks[i:i + batch_size]
-            inputs = self.tokenizer(batch_chunks, return_tensors="pt", truncation=True, max_length=self.max_length, padding='longest').to(self.device)
+            inputs = self.tokenizer(batch_chunks, return_tensors="pt", truncation=True, max_length=self.max_length, padding='longest').to(self._input_device)
             with torch.no_grad():
                 translated = self.model.generate(**inputs, **self.gen_kwargs,
                     forced_bos_token_id=self.forced_bos_token_id)
@@ -446,7 +450,7 @@ class TranslationNTM:
             for i in range(0, len(chunks), batch_size):
                 batch_chunks = chunks[i:i + batch_size]
                 batch_texts = [self.tokenizer.decode(chunk_tokens, skip_special_tokens=True) for chunk_tokens in batch_chunks]
-                inputs = self.tokenizer(batch_texts, return_tensors="pt", truncation=True, max_length=self.max_length, padding='longest').to(self.device)
+                inputs = self.tokenizer(batch_texts, return_tensors="pt", truncation=True, max_length=self.max_length, padding='longest').to(self._input_device)
                 with torch.no_grad():
                     translated = self.model.generate(**inputs, **self.gen_kwargs,
                        forced_bos_token_id=self.forced_bos_token_id)
