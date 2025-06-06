@@ -19,9 +19,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 import os
-
-from typing import Dict, Tuple, Literal, Any, LiteralString
-
 # https://medium.com/@rakeshrajpurohit/model-quantization-with-hugging-face-transformers-and-bitsandbytes-integration-b4c9983e8996
 class TranslationNTM:
     def __init__(self,
@@ -43,10 +40,10 @@ class TranslationNTM:
                  temperature: float=0.49
                  #max_new_tokens: int=256
                  ):
-                     
-        
+
+
         logger.info(f"Initialising translation with {model_name} \n\n")
-        
+
         self.sentence_splitter = sentence_splitter
         self.model_name = model_name
         self.multilingual = multilingual
@@ -75,7 +72,7 @@ class TranslationNTM:
             'num_return_sequences': 1,
         }
         if model_name not in ["vvn/en-to-dutch-marianmt"]:
-            self.gen_kwargs.update({          
+            self.gen_kwargs.update({
                 'top_p': 0.95,
                 'temperature': temperature
             })
