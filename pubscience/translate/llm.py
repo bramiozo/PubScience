@@ -182,8 +182,8 @@ class TranslationLLM:
             'top_p': 0.95,
             'top_k': 50,
             'temperature': temperature,
-            'frequency_penalty': 1.5,
-            'presence_penalty': 0.25,
+            #'frequency_penalty': 1.5,
+            #'presence_penalty': 0.25,
             'candidate_count': 1
         }
 
@@ -232,10 +232,14 @@ class TranslationLLM:
             )
 
             self.client = google_gen.Client(api_key=os.getenv('GOOGLE_LLM_API_KEY'))
-            AvailableModels = _get_available_google_models(google_gen)
-
-            if f"models/{model}" not in AvailableModels:
+            try:
+                model_info = self.client.models.get(model=model)
+                print(f"Model info: {model_info}")
+            except Exception as e:
+                print(f"Problem with model{model}: {e}")
+                AvailableModels = _get_available_google_models(self.client)
                 raise ValueError(f"Model {model} not available. Available models are: {AvailableModels}")
+
 
         elif provider == 'groq':
             self.client = Groq(api_key=os.getenv('GROQ_LLM_API_KEY'))
@@ -440,7 +444,7 @@ class TranslationLLM:
     async def _translate_google_async(self, InputText: llm_input) -> Dict[str, Any]:
         try:
             # if this fails, try await self.client.aio.models.generate_content
-            response = await self.client.models.generate_content_async(
+            response = await self.client.aio.models.generate_content(
                 model=self.model,
                 contents=str(InputText),
                 config = self.GoogleConfig
