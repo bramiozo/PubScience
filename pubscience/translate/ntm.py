@@ -290,7 +290,8 @@ class TranslationNTM:
                 )
 
                 # Use accelerator's send_to_device method
-                inputs = self.accelerator.send_to_device(inputs)
+                inputs = {k: v.to(self.accelerator.device) for k, v in inputs.items()}
+                #inputs = inputs.to(self.accelerator.device)
 
                 with torch.no_grad():
                     if self.multilingual:
