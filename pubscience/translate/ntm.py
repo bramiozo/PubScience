@@ -40,8 +40,13 @@ class TranslationNTM:
                  sentence_splitter: Literal['nltk', 'pysbd']='pysbd',
                  num_beams: int=5,
                  use_quantisation: bool=False,
+                 temperature: float=0.49
                  #max_new_tokens: int=256
                  ):
+                     
+        
+        logger.info(f"Initialising translation with {model_name} \n\n")
+        
         self.sentence_splitter = sentence_splitter
         self.model_name = model_name
         self.multilingual = multilingual
@@ -60,9 +65,7 @@ class TranslationNTM:
             'max_new_tokens' : self.max_new_tokens,
             'num_beams' : self.num_beams,
             'early_stopping': True,
-            'top_p': 0.95,
             'top_k': 50,
-            'temperature': 0.77,
             'do_sample': False,
             #'min_p': 0.05,
             'repetition_penalty': 1.5,
@@ -71,6 +74,11 @@ class TranslationNTM:
             'no_repeat_ngram_size': 0,
             'num_return_sequences': 1,
         }
+        if model_name not in ["vvn/en-to-dutch-marianmt"]:
+            self.gen_kwargs.update({          
+                'top_p': 0.95,
+                'temperature': temperature
+            })
 
         if self.use_quantisation:
             self.quant_config = BitsAndBytesConfig(**{
@@ -146,9 +154,11 @@ class TranslationNTM:
             if self.use_gpu:
                 self.device = "cuda:0" if (torch.cuda.is_available()) & (torch.cuda.device_count()==1) else "cpu"
                 _device = self.device
+                logger.info("MODEL LOADED ON GPU")
             else:
                 self.device = "cpu"
                 _device = self.device
+                logger.info("MODEL LOADED ON CPU")
 
             used_device_map = False
             try:

@@ -21,3 +21,10 @@ auth/*
 artifacts/*
 .env
 pyrightconfig.json
+*.xml
+*.gz
+*.zip
+*.lock
+*.pyc
+.lock
+.pyc

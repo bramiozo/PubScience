@@ -63,10 +63,12 @@ class PubMedProcessor:
         self.output_dir.mkdir(exist_ok=True)
         self.temp_dir.mkdir(exist_ok=True)
         
+        multilingual = False if model_name in ["vvn/en-to-dutch-marianmt"] else True
+        
         # Initialize translator
         self.translator = ntm.TranslationNTM(
             model_name=model_name,
-            multilingual=False,
+            multilingual=multilingual,
             max_length=max_length,
             use_gpu=True,
             target_lang=target_lang
@@ -236,9 +238,18 @@ class PubMedProcessor:
         logger.info(f"Found {len(xml_files)} XML files to process")
         
         processed_count = 0
-        batch = []
+        batch = []       
+
+        # if output_file already exists 
+        # check number of lines and begin
+        if os.path.exists(output_file):
+            with open(output_file, 'r', encoding='utf-8') as fr:
+                read_num = len(fr.readlines())
+        else:
+            read_num = 0
         
-        with open(output_file, 'w', encoding='utf-8') as f:
+        with open(output_file, 'a', encoding='utf-8') as f:
+            self.processed_num = 0
             for xml_file in xml_files:
                 try:
                     # Extract text and metadata
@@ -250,7 +261,7 @@ class PubMedProcessor:
                     
                     # Process batch when it reaches batch_size
                     if len(batch) >= self.batch_size:
-                        self.translate_and_write_batch(batch, f)
+                        self.translate_and_write_batch(batch, f, read_num)
                         processed_count += len(batch)
                         batch = []
                         logger.info(f"Processed {processed_count} files...")
@@ -266,14 +277,18 @@ class PubMedProcessor:
         
         logger.info(f"Processed {processed_count} XML files total")
     
-    def translate_and_write_batch(self, batch: List[Dict[str, Any]], file_handle):
+    def translate_and_write_batch(self, batch: List[Dict[str, Any]], file_handle, read_num: int):
         """Translate a batch of texts and write to output file."""
         try:
             # Extract texts for translation
             texts = [item['text'] for item in batch]
             
             # Translate batch
-            translated_texts = self.translator.translate_long_batch(texts, batch_size=self.batch_size)
+            if len(texts)+self.processed_num >= read_num:
+                translated_texts = self.translator.translate_long_batch(texts, batch_size=self.batch_size)
+            else:
+                self.processed_num += len(texts)
+                return self
             
             # Write results
             for i, translated_text in enumerate(translated_texts):
@@ -290,6 +305,7 @@ class PubMedProcessor:
                 
                 # Write to JSONL file
                 file_handle.write(json.dumps(output_record, ensure_ascii=False) + '\n')
+                self.processed_num += 1
                 
         except Exception as e:
             logger.error(f"Error translating batch: {e}")
@@ -390,8 +406,8 @@ Examples:
     parser.add_argument(
         '--max-length',
         type=int,
-        default=496,
-        help='Maximum sequence length for translation (default: 496)'
+        default=256,
+        help='Maximum sequence length for translation (default: 256)'
     )
     
     parser.add_argument(
@@ -418,8 +434,8 @@ Examples:
     parser.add_argument(
         '--batch-size',
         type=int,
-        default=16,
-        help='Batch size for translation processing (default: 16)'
+        default=8,
+        help='Batch size for translation processing (default: 2), contingent on the expected size of the documents'
     )
     
     parser.add_argument(
