@@ -472,6 +472,7 @@ def main():
     logger.info(f"  Batch size: {args.batch_size}")
     logger.info(f"  Output directory: {args.output_dir}")
     logger.info(f"  Temp directory: {args.temp_dir}")
+    logger.info(f"  Multi-GPU: {args.multi_gpu}")
 
     processor = PubMedProcessor(
         model_name=args.model_name,
