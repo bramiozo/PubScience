@@ -56,6 +56,11 @@ class TranslationNTM:
             logger.info("Multiple GPUs found, using Accelerator for inference")
             self.accelerator = Accelerator()
             self.use_accelerate = True
+
+            logger.info(f"Accelerator device: {self.accelerator.device}")
+            logger.info(f"Process index: {self.accelerator.process_index}")
+            logger.info(f"Number of processes: {self.accelerator.num_processes}")
+            logger.info(f"Is main process: {self.accelerator.is_main_process}")
         else:
             if torch.cuda.device_count() > 1:
                 logger.info("Multiple GPUs found, consider using Accelerator")
@@ -148,18 +153,33 @@ class TranslationNTM:
             self.forced_bos_token_id = None
 
         self.load_model()
-        max_model_length = getattr(self.model.config, 'max_position_embeddings', None) or \
-                            getattr(self.model.config, 'max_length', None)  \
-                            or getattr(self.model.config, 'n_positions', None)
+
+        # Handle both regular model and DistributedDataParallel wrapped model
+        if hasattr(self.model, 'module'):
+            # Model is wrapped with DistributedDataParallel
+            model_config = self.model.module.config
+        else:
+            # Regular model
+            model_config = self.model.config
+
+        max_model_length = getattr(model_config, 'max_position_embeddings', None) or \
+                            getattr(model_config, 'max_length', None) or \
+                            getattr(model_config, 'n_positions', None)
+
         assert(max_model_length is not None), "Model does not have max_position_embeddings, max_length or n_positions attribute."
         assert(self.max_length <= max_model_length), f"max_length {self.max_length} is greater than the model's max_position_embeddings {max_model_length}."
+
         logger.info(f"Model {self.model_name} loaded successfully.")
-        logger.info(f"Model configuration: {self.model.config}")
-        self.config = self.model.config
+        logger.info(f"Model configuration: {model_config}")
+        self.config = model_config
 
     def _input_device(self):
-       # Grab the device of the first model parameter
-       return next(self.model.parameters()).device
+        # Handle both regular model and DistributedDataParallel wrapped model
+        if hasattr(self.model, 'module'):
+            return next(self.model.module.parameters()).device
+        else:
+            return next(self.model.parameters()).device
+
 
     def reset(self):
         """
@@ -171,7 +191,7 @@ class TranslationNTM:
 
 
     def load_model(self):
-        if  self.use_accelerate and self.accelerator:
+        if  self.use_accelerate and self.accelerator is not None:
             # Let accelerate handle device placement
             self.model = AutoModelForSeq2SeqLM.from_pretrained(
                 self.model_name,
