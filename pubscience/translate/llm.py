@@ -436,7 +436,8 @@ class TranslationLLM:
                 contents=str(InputText),
                 config = self.GoogleConfig
             )
-            return {'translated_text': response.text.strip(), 'feedback': response.prompt_feedback}
+            return {'translated_text': response.text.strip(),
+                'feedback': response.prompt_feedback}
         except Exception as e:
             print(f"Error: {e}")
             return {'translated_text': None, 'feedback': response.prompt_feedback}
@@ -449,10 +450,11 @@ class TranslationLLM:
                 contents=str(InputText),
                 config = self.GoogleConfig
             )
-            return {'translated_text': response.text.strip(), 'feedback': response.prompt_feedback}
+            return {'translated_text': response.text.strip(),
+                'feedback': response.prompt_feedback}
         except Exception as e:
             print(f"Error: {e}")
-            return {'translated_text': None, 'feedback': response.prompt_feedback}
+            return {'translated_text': None, 'feedback': e}
 
     def _translate_groq(self, InputText: llm_input) -> Dict[str, Any]:
         response = self.client.chat.completions.create(
