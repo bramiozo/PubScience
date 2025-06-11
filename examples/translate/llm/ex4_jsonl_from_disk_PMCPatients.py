@@ -21,13 +21,13 @@ SLEEP = 3
 SYSTEM_PROMPT = "You are a faithful and truthful translator in the medical/clinical domain. The user query is formatted as a dictionary {'source_language':..,'target_language':.., 'text_to_translate':..}, your response should ONLY consist of your translation"
 
 vars = {
-    'model': 'gemini-1.5-flash',
+    'model': 'gemini-2.5-flash-preview-05-20',
     'provider': 'google',
     'source_lang': 'english',
     'target_lang': 'dutch',
     'max_tokens': MAX_LENGTH,
     'system_prompt': SYSTEM_PROMPT,
-    'temperature': 0.15,
+    'temperature': 0.35,
     'env_loc': '../../.run.env',
 }
 

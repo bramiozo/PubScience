@@ -10,6 +10,12 @@ from typing import List, Literal, Dict, Tuple, Any
 import nltk
 import pysbd
 import re
+
+from accelerate import Accelerator
+from accelerate.utils import gather_object
+import torch.distributed as dist
+import torch.multiprocessing as mp
+
 nltk.download('punkt_tab')
 
 import logging
@@ -19,9 +25,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 import os
-
-from typing import Dict, Tuple, Literal, Any, LiteralString
-
 # https://medium.com/@rakeshrajpurohit/model-quantization-with-hugging-face-transformers-and-bitsandbytes-integration-b4c9983e8996
 class TranslationNTM:
     def __init__(self,
@@ -40,13 +43,30 @@ class TranslationNTM:
                  sentence_splitter: Literal['nltk', 'pysbd']='pysbd',
                  num_beams: int=5,
                  use_quantisation: bool=False,
-                 temperature: float=0.49
+                 temperature: float=0.49,
+                 use_accelerate: bool=False
                  #max_new_tokens: int=256
                  ):
-                     
-        
+
+
         logger.info(f"Initialising translation with {model_name} \n\n")
-        
+
+        # Initialize accelerator first
+        if use_accelerate and torch.cuda.device_count() > 1:
+            logger.info("Multiple GPUs found, using Accelerator for inference")
+            self.accelerator = Accelerator()
+            self.use_accelerate = True
+
+            logger.info(f"Accelerator device: {self.accelerator.device}")
+            logger.info(f"Process index: {self.accelerator.process_index}")
+            logger.info(f"Number of processes: {self.accelerator.num_processes}")
+            logger.info(f"Is main process: {self.accelerator.is_main_process}")
+        else:
+            if torch.cuda.device_count() > 1:
+                logger.info("Multiple GPUs found, consider using Accelerator")
+            self.accelerator = None
+            self.use_accelerate = False
+
         self.sentence_splitter = sentence_splitter
         self.model_name = model_name
         self.multilingual = multilingual
@@ -74,8 +94,9 @@ class TranslationNTM:
             'no_repeat_ngram_size': 0,
             'num_return_sequences': 1,
         }
-        if model_name not in ["vvn/en-to-dutch-marianmt"]:
-            self.gen_kwargs.update({          
+        if model_name not in ["vvn/en-to-dutch-marianmt","facebook/nllb-200-3.3B",
+                                "facebook/nllb-200-distilled-600M"]:
+            self.gen_kwargs.update({
                 'top_p': 0.95,
                 'temperature': temperature
             })
@@ -132,14 +153,36 @@ class TranslationNTM:
             self.forced_bos_token_id = None
 
         self.load_model()
-        max_model_length = getattr(self.model.config, 'max_position_embeddings', None) or \
-                            getattr(self.model.config, 'max_length', None)  \
-                            or getattr(self.model.config, 'n_positions', None)
+
+        # Handle both regular model and DistributedDataParallel wrapped model
+        if hasattr(self.model, 'module'):
+            # Model is wrapped with DistributedDataParallel
+            model_config = self.model.module.config
+        else:
+            # Regular model
+            model_config = self.model.config
+
+        max_model_length = getattr(model_config, 'max_position_embeddings', None) or \
+                            getattr(model_config, 'max_length', None) or \
+                            getattr(model_config, 'n_positions', None)
+
         assert(max_model_length is not None), "Model does not have max_position_embeddings, max_length or n_positions attribute."
         assert(self.max_length <= max_model_length), f"max_length {self.max_length} is greater than the model's max_position_embeddings {max_model_length}."
+
         logger.info(f"Model {self.model_name} loaded successfully.")
-        logger.info(f"Model configuration: {self.model.config}")
-        self.config = self.model.config
+        logger.info(f"Model configuration: {model_config}")
+        self.config = model_config
+
+    def _input_device(self):
+        # Handle both regular model and DistributedDataParallel wrapped model
+        return next(self._get_model().parameters()).device
+
+    def _get_model(self):
+        """Get the actual model, handling DistributedDataParallel wrapping"""
+        if hasattr(self.model, 'module'):
+            return self.model.module
+        else:
+            return self.model
 
     def reset(self):
         """
@@ -151,8 +194,28 @@ class TranslationNTM:
 
 
     def load_model(self):
+        if  self.use_accelerate and self.accelerator is not None:
+            # Let accelerate handle device placement
+            self.model = AutoModelForSeq2SeqLM.from_pretrained(
+                self.model_name,
+                torch_dtype=torch.float32,
+                quantization_config=self.quant_config
+            )
+            # Prepare model with accelerate
+            self.model = self.accelerator.prepare(self.model)
+            self.device = self.accelerator.device
+        else:
             if self.use_gpu:
-                self.device = "cuda:0" if (torch.cuda.is_available()) & (torch.cuda.device_count()==1) else "cpu"
+                if torch.cuda.is_available():
+                    device_count = torch.cuda.device_count()
+                    if device_count == 1:
+                        self.device = "cuda:0"
+                    else:
+                        # If multiple devices available, use the first one but could be configured
+                        self.device = f"cuda:{torch.cuda.current_device()}"
+
+                else:
+                    self.device = "cpu"
                 _device = self.device
                 logger.info("MODEL LOADED ON GPU")
             else:
@@ -194,13 +257,16 @@ class TranslationNTM:
                     raise ValueError(f"Unexpected error while loading model: {e}")
             self.model.eval()
 
-            return self.model
+        return self.model
 
     def translate(self, text: str) -> str:
         inputs = self.tokenizer(text, return_tensors="pt",
-            padding=True, max_length=self.max_length, truncation=True).to(self.device)
+            padding=True, max_length=self.max_length, truncation=True).to(self._input_device)
+
+        actual_model = self._get_model()
+
         if self.multilingual:
-            outputs = self.model.generate(**inputs,
+            outputs = actual_model.generate(**inputs,
                 **self.gen_kwargs,
                 forced_bos_token_id=self.forced_bos_token_id)
         else:
@@ -213,19 +279,67 @@ class TranslationNTM:
                                     return_tensors="pt",
                                     max_length=self.max_length,
                                     padding='longest',
-                                    truncation=True).to(self.device)
+                                    truncation=True).to(self._input_device)
+
+            actual_model = self._get_model()
+
             if self.multilingual:
                 with torch.no_grad():
-                    outputs = self.model.generate(**inputs,
+                    outputs = actual_model.generate(**inputs,
                         **self.gen_kwargs,
                         forced_bos_token_id=self.forced_bos_token_id,
                         )
             else:
                 with torch.no_grad():
-                    outputs = self.model.generate(**inputs,
+                    outputs = actual_model.generate(**inputs,
                         **self.gen_kwargs)
             translated_texts = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
             return translated_texts
+
+    def translate_batch_distributed(self, texts: List[str], batch_size: int = 8) -> List[str]:
+        """
+        Multi-GPU batch translation using Accelerate
+        """
+        if not self.use_accelerate:
+            return self.translate_batch(texts)
+
+        # Split texts across processes
+        with self.accelerator.split_between_processes(texts) as local_texts:
+            local_results = []
+
+            for i in range(0, len(local_texts), batch_size):
+                batch_texts = local_texts[i:i + batch_size]
+
+                inputs = self.tokenizer(
+                    batch_texts,
+                    return_tensors="pt",
+                    max_length=self.max_length,
+                    padding='longest',
+                    truncation=True
+                )
+
+                # Use accelerator's send_to_device method
+                inputs = {k: v.to(self.accelerator.device) for k, v in inputs.items()}
+                #inputs = inputs.to(self.accelerator.device)
+
+                with torch.no_grad():
+                    actual_model = self._get_model()
+                    if self.multilingual:
+                        outputs = actual_model.generate(
+                            **inputs,
+                            **self.gen_kwargs,
+                            forced_bos_token_id=self.forced_bos_token_id
+                        )
+                    else:
+                        outputs = actual_model.generate(**inputs, **self.gen_kwargs)
+
+                    batch_translations = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
+                    local_results.extend(batch_translations)
+
+        # Gather results from all processes
+        all_results = gather_object(local_results)
+        return all_results
+
 
     def translate_long(self, text: str) -> str:
         if self.sentence_splitter == 'nltk':
@@ -302,10 +416,13 @@ class TranslationNTM:
             truncation=False,  # Disable truncation to prevent input loss
             max_length=None,  # Ensure max_length does not enforce truncation
             padding='longest'
-        ).to(self.device)
+        ).to(self._input_device)
 
         input_token_length = inputs['input_ids'].shape[1]
-        model_max_length = self.model.config.max_position_embeddings
+
+        actual_model = self._get_model()
+
+        model_max_length = actual_model.config.max_position_embeddings
 
         # Check if input exceeds model's maximum position embeddings
         if input_token_length > model_max_length:
@@ -317,11 +434,11 @@ class TranslationNTM:
                 truncation=True,
                 max_length=self.max_length,
                 padding='longest'
-            ).to(self.device)
+            ).to(self._input_device)
 
         # Generate translation with specified max_new_tokens
         with torch.no_grad():
-            translated = self.model.generate(**inputs, **self.gen_kwargs)
+            translated = actual_model.generate(**inputs, **self.gen_kwargs)
 
         return self.tokenizer.decode(translated[0], skip_special_tokens=True)
 
@@ -339,7 +456,10 @@ class TranslationNTM:
             translated_paragraphs = []
 
             chunks = self._prepare_chunks(sentences)
-            translated_chunks = self._translate_chunks_batch(chunks, batch_size)
+            if self.use_accelerate:
+                translated_chunks = self.translate_batch_distributed(chunks, batch_size)
+            else:
+                translated_chunks = self._translate_chunks_batch(chunks, batch_size)
             translated_paragraph = " ".join(translated_chunks)
             translated_paragraphs.append(translated_paragraph)
 
@@ -388,9 +508,10 @@ class TranslationNTM:
 
         for i in range(0, len(chunks), batch_size):
             batch_chunks = chunks[i:i + batch_size]
-            inputs = self.tokenizer(batch_chunks, return_tensors="pt", truncation=True, max_length=self.max_length, padding='longest').to(self.device)
+            inputs = self.tokenizer(batch_chunks, return_tensors="pt", truncation=True, max_length=self.max_length, padding='longest').to(self._input_device)
             with torch.no_grad():
-                translated = self.model.generate(**inputs, **self.gen_kwargs,
+                actual_model = self._get_model()
+                translated = actual_model.generate(**inputs, **self.gen_kwargs,
                     forced_bos_token_id=self.forced_bos_token_id)
                 batch_translations = self.tokenizer.batch_decode(translated, skip_special_tokens=True)
             translated_chunks.extend(batch_translations)
@@ -436,16 +557,24 @@ class TranslationNTM:
                 chunks.append(current_chunk_tokens)
 
             # Translate chunks in batches
-            translated_chunks = []
-            for i in range(0, len(chunks), batch_size):
-                batch_chunks = chunks[i:i + batch_size]
-                batch_texts = [self.tokenizer.decode(chunk_tokens, skip_special_tokens=True) for chunk_tokens in batch_chunks]
-                inputs = self.tokenizer(batch_texts, return_tensors="pt", truncation=True, max_length=self.max_length, padding='longest').to(self.device)
-                with torch.no_grad():
-                    translated = self.model.generate(**inputs, **self.gen_kwargs,
-                       forced_bos_token_id=self.forced_bos_token_id)
-                    batch_translations = self.tokenizer.batch_decode(translated, skip_special_tokens=True)
-                translated_chunks.extend(batch_translations)
+            # Translate chunks in batches
+            if self.use_accelerate:
+                # Convert chunk tokens back to text for accelerate processing
+                chunk_texts = [self.tokenizer.decode(chunk_tokens, skip_special_tokens=True) for chunk_tokens in chunks]
+                translated_chunks = self.translate_batch_distributed(chunk_texts, batch_size)
+            else:
+                translated_chunks = []
+                for i in range(0, len(chunks), batch_size):
+                    batch_chunks = chunks[i:i + batch_size]
+                    batch_texts = [self.tokenizer.decode(chunk_tokens, skip_special_tokens=True) for chunk_tokens in batch_chunks]
+                    inputs = self.tokenizer(batch_texts, return_tensors="pt", truncation=True, max_length=self.max_length, padding='longest').to(self._input_device)
+                    with torch.no_grad():
+                        actual_model = self._get_model()
+                        translated = actual_model.generate(**inputs, **self.gen_kwargs,
+                        forced_bos_token_id=self.forced_bos_token_id)
+                        batch_translations = self.tokenizer.batch_decode(translated, skip_special_tokens=True)
+                    translated_chunks.extend(batch_translations)
+
 
             # Assemble translated text
             translated_text = " ".join(translated_chunks)
