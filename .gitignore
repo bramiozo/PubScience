@@ -26,5 +26,8 @@ pyrightconfig.json
 *.zip
 *.lock
 *.pyc
+*.*.pyc
 .lock
 .pyc
+poetry.lock
+pubscience/__pycache__/*
