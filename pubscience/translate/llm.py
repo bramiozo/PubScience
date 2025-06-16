@@ -147,9 +147,11 @@ class TranslationLLM:
         env_loc: str,
         system_prompt: str="",
         max_tokens: int=5000,
+        max_tokens_truncate: bool=False,
         max_chunk_size: int=1024,
         max_processes: int=8,
-        temperature: float=0.0):
+        temperature: float=0.0,
+        ):
 
         load_dotenv(env_loc)
 
@@ -161,6 +163,7 @@ class TranslationLLM:
         self.target_lang = target_lang
         self.max_tokens = max_tokens
         self.max_chunk_size = max_chunk_size
+        self.max_tokens_truncate = max_tokens_truncate
         self.temperature = temperature
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.max_processes = max_processes
@@ -316,7 +319,12 @@ class TranslationLLM:
     def translate_batch(self, texts: List[str]) -> List[Dict[str, Any]]:
         assert (self.provider.lower() != "local"), "Batch translation not supported for the local LLM."
         assert (len(texts)<= self.max_processes), f"Batch size {len(texts)} exceeds maximum number of processes: {self.max_processes}"
-        assert (all([len(text.split()) <= self.max_tokens for text in texts])), f"One or more texts are too long. Max tokens is {self.max_tokens}."
+
+        if self.max_tokens_truncate:
+            # truncate all texts to max self.max_tokens
+            texts = [" ".join(text.split()[:self.max_tokens]) for text in texts]
+        else:
+            assert (all([len(text.split()) <= self.max_tokens for text in texts])), f"One or more texts are too long. Max tokens is {self.max_tokens}."
 
         warnings.warn("""\n\nUsing `translate_batch()` is 50% more expensive than using `llm_batch()`. \n The latter is also faster for larger amounts. \n\n Please consider using `llm_batch()` instead.""", stacklevel=2)
 
