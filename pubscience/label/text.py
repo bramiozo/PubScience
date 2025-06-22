@@ -24,8 +24,8 @@ from openai import NotFoundError as openai_NotFoundError
 from openai import RateLimitError as openai_RateLimitError
 from groq import Groq
 
-from typing import Optional, Dict, List, Any, Literal
-from pydantic import BaseModel
+from typing import Optional, Dict, List, Any, Literal, Union
+from pydantic import BaseModel, Field
 
 import asyncio
 from time import sleep
@@ -47,6 +47,18 @@ unsloth_models = [
     "unsloth/Phi-4-mini-instruct-GGUF"
 ]
 
+# Prompt format for local models
+prompt_format = """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+
+### Instruction:
+{}
+
+### Input:
+{}
+
+### Response:
+{}"""
+
 class llm_input(BaseModel):
     instruction: str
     text_to_transform: str
@@ -55,6 +67,16 @@ class llm_input(BaseModel):
         return "{" + f"'instruction': '{self.instruction}', 'text_to_transform': '{self.text_to_transform}'" + "}"
     def __repr__(self) -> str:
         return self.__str__()
+
+
+class LLMOutput(BaseModel):
+    """Structured output format for LLM responses"""
+    content: str = Field(description="The generated text content")
+    logprob: Optional[float] = Field(default=None, description="Log probability of the response")
+    model: str = Field(description="Model used for generation")
+    provider: str = Field(description="Provider used for generation")
+    instruction: str = Field(description="The instruction that was used")
+    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Additional metadata from the API response")
 
 def _get_available_google_models(google_gen_client) -> List[str]:
     available_models = []
@@ -155,6 +177,7 @@ class extract():
         elif provider == 'local':
             # EuroLLM-9B-Instruct
             # unsloth/Mixtral-8x7B-v0.1-bnb-4bit
+            import torch
             from unsloth import FastLanguageModel
             if model not in unsloth_models:
                 raise ValueError(f"""Model {model} not available.
@@ -165,6 +188,17 @@ class extract():
                 max_seq_length=max_tokens, load_in_4bit=True
             )
             FastLanguageModel.for_inference(self.client) # Enable native 2x faster inference
+
+            # Set device
+            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+            # Generation kwargs
+            self.gen_kwargs = {
+                'temperature': temperature,
+                'do_sample': True,
+                'top_p': 0.95,
+                'top_k': 50,
+            }
         else:
             raise ValueError(f"Unsupported provider: {provider}")
         #self.write_per_instruction = llm_settings.get('transformation').get('out_per_instruction', False)
@@ -172,12 +206,15 @@ class extract():
 
     def __call__(self, text: str):
         self.intermediate_outputs = []
+        current_text = text
         for instruction in self.instruction_list:
-            text = self._transform(text, instruction)
-            self.intermediate_outputs.append(text)
-        return text
+            result = self._transform(current_text, instruction)
+            # Extract the content for the next iteration, but store the full result
+            current_text = result.content if isinstance(result, LLMOutput) else result
+            self.intermediate_outputs.append(result)
+        return result  # Return the final LLMOutput object
 
-    def _transform(self, text: str, instruction: str):
+    def _transform(self, text: str, instruction: str) -> LLMOutput:
         InputText = llm_input(instruction=instruction,
                             text_to_transform=text)
 
@@ -195,7 +232,7 @@ class extract():
             raise ValueError(f"Unsupported provider: {self.provider}")
 
 
-    def __transform_google(self, InputText: llm_input) -> Dict[str, Any]:
+    def __transform_google(self, InputText: llm_input) -> LLMOutput:
         # TODO: if self.n>1, this will return a list of responses...
         # TODO: the number of total outcome then becomes n^numInstructions, perhaps not what we want? :D
         try:
@@ -204,11 +241,38 @@ class extract():
                 contents=str(InputText),
                 config = self.GoogleConfig
             )
-            return response.text.strip()
+
+            # Extract logprob if available (Google Gemini API may not always provide this)
+            logprob = None
+            metadata = {}
+
+            if hasattr(response, 'candidates') and response.candidates:
+                candidate = response.candidates[0]
+                if hasattr(candidate, 'log_probs') and candidate.log_probs:
+                    logprob = sum([token.log_probability for token in candidate.log_probs.tokens])
+
+                # Add safety ratings and other metadata
+                if hasattr(candidate, 'safety_ratings'):
+                    metadata['safety_ratings'] = [
+                        {'category': rating.category.name, 'probability': rating.probability.name}
+                        for rating in candidate.safety_ratings
+                    ]
+
+                if hasattr(candidate, 'finish_reason'):
+                    metadata['finish_reason'] = candidate.finish_reason.name
+
+            return LLMOutput(
+                content=response.text.strip(),
+                logprob=logprob,
+                model=self.model,
+                provider=self.provider,
+                instruction=InputText.instruction,
+                metadata=metadata
+            )
         except Exception as e:
             raise ValueError(f"Could not transform text with Google LLM: {e}")
 
-    def __transform_anthropic(self, InputText: llm_input) -> Dict[str, Any]:
+    def __transform_anthropic(self, InputText: llm_input) -> LLMOutput:
         response = self.client.messages.create(
             model=self.model,
             temperature=self.temperature,
@@ -220,9 +284,27 @@ class extract():
             ],
             max_tokens=self.max_tokens
         )
-        return response.content[0].text.strip()
 
-    def __transform_groq(self, InputText: llm_input) -> Dict[str, Any]:
+        # Anthropic doesn't typically provide logprobs in the standard API
+        metadata = {
+            'usage': {
+                'input_tokens': response.usage.input_tokens,
+                'output_tokens': response.usage.output_tokens
+            },
+            'stop_reason': response.stop_reason,
+            'stop_sequence': response.stop_sequence
+        }
+
+        return LLMOutput(
+            content=response.content[0].text.strip(),
+            logprob=None,  # Anthropic doesn't provide logprobs by default
+            model=self.model,
+            provider=self.provider,
+            instruction=InputText.instruction,
+            metadata=metadata
+        )
+
+    def __transform_groq(self, InputText: llm_input) -> LLMOutput:
         response = self.client.chat.completions.create(
             messages = [
                 {
@@ -234,12 +316,39 @@ class extract():
                     "content": str(InputText)
                 }
             ],
-            model = self.model
+            model = self.model,
+            logprobs=True,  # Request logprobs from Groq
+            top_logprobs=1
         )
-        return response.choices[0].message.content.strip()
+
+        choice = response.choices[0]
+        logprob = None
+
+        # Extract logprob if available
+        if hasattr(choice, 'logprobs') and choice.logprobs and choice.logprobs.content:
+            # Sum the logprobs of all tokens
+            logprob = sum([token.logprob for token in choice.logprobs.content if token.logprob is not None])
+
+        metadata = {
+            'finish_reason': choice.finish_reason,
+            'usage': {
+                'prompt_tokens': response.usage.prompt_tokens,
+                'completion_tokens': response.usage.completion_tokens,
+                'total_tokens': response.usage.total_tokens
+            }
+        }
+
+        return LLMOutput(
+            content=choice.message.content.strip(),
+            logprob=logprob,
+            model=self.model,
+            provider=self.provider,
+            instruction=InputText.instruction,
+            metadata=metadata
+        )
 
 
-    def __transform_openai(self, InputText: llm_input) -> Dict[str, Any]:
+    def __transform_openai(self, InputText: llm_input) -> LLMOutput:
         try:
             response = self.client.chat.completions.create(
                 temperature=0.1,
@@ -253,17 +362,43 @@ class extract():
                         'role': 'user',
                         'content': str(InputText)
                     }
-                ]
+                ],
+                logprobs=True,  # Request logprobs from OpenAI
+                top_logprobs=1
             )
         except openai_NotFoundError as e:
             raise ValueError(f"Model {self.model} not found. {e}. Allowable models are: {self.client.models.list()}")
         except openai_RateLimitError as e:
             raise ValueError(f"Rate limit reached. {e}")
 
-        return response.choices[0].message.content.strip()
+        choice = response.choices[0]
+        logprob = None
+
+        # Extract logprob if available
+        if hasattr(choice, 'logprobs') and choice.logprobs and choice.logprobs.content:
+            # Sum the logprobs of all tokens
+            logprob = sum([token.logprob for token in choice.logprobs.content if token.logprob is not None])
+
+        metadata = {
+            'finish_reason': choice.finish_reason,
+            'usage': {
+                'prompt_tokens': response.usage.prompt_tokens,
+                'completion_tokens': response.usage.completion_tokens,
+                'total_tokens': response.usage.total_tokens
+            }
+        }
+
+        return LLMOutput(
+            content=choice.message.content.strip(),
+            logprob=logprob,
+            model=self.model,
+            provider=self.provider,
+            instruction=InputText.instruction,
+            metadata=metadata
+        )
 
 
-    def __translate_local(self, InputText: llm_input) -> Dict[str, Any]:
+    def __transform_local(self, InputText: llm_input) -> LLMOutput:
         _InputText = str(InputText)
         inputs = self.tokenizer([
             prompt_format.format(
@@ -280,10 +415,50 @@ class extract():
             max_new_tokens = min(1.5*len(_InputText.split()), self.max_tokens),
             use_cache=True,
             pad_token_id = self.tokenizer.eos_token_id,
+            return_dict_in_generate=True,
+            output_scores=True  # This enables logprob calculation
         )
 
+        # Decode the generated text
+        if hasattr(response, 'sequences'):
+            decoded_text = self.tokenizer.batch_decode(response.sequences, skip_special_tokens=True)[0]
+        else:
+            decoded_text = self.tokenizer.batch_decode(response, skip_special_tokens=True)[0]
+
+        # Extract only the response part (after the prompt)
+        prompt_text = prompt_format.format(self.system_prompt, _InputText, "")
+        if decoded_text.startswith(prompt_text):
+            decoded_text = decoded_text[len(prompt_text):].strip()
+
+        # Calculate logprob from scores if available
+        logprob = None
+        if hasattr(response, 'scores') and response.scores:
+            import torch
+            # Convert scores to probabilities and sum log probabilities
+            total_logprob = 0
+            for i, score in enumerate(response.scores):
+                if hasattr(response, 'sequences'):
+                    # Get the actual token that was selected (from the sequence)
+                    token_id = response.sequences[0][len(inputs['input_ids'][0]) + i]
+                    token_prob = torch.nn.functional.softmax(score[0], dim=-1)[token_id]
+                    total_logprob += torch.log(token_prob).item()
+            logprob = total_logprob
+
+        metadata = {
+            'sequence_length': len(response.sequences[0]) if hasattr(response, 'sequences') else None,
+            'model_type': 'local_unsloth',
+            'generation_config': self.gen_kwargs
+        }
+
         # TODO: add parser to extract only the response
-        return self.tokenizer.batch_decode(response)[0].strip()
+        return LLMOutput(
+            content=decoded_text,
+            logprob=logprob,
+            model=self.model,
+            provider=self.provider,
+            instruction=InputText.instruction,
+            metadata=metadata
+        )
 
 def parse_folder_with_txt(arguments: argparse.Namespace):
     list_of_files = os.listdir(arguments.folder_path)
