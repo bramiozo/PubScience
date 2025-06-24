@@ -12,7 +12,7 @@ cleaning:
 transformation:
   instructions:
     - "Summarize the core message of this text in a few sentences."
-    - "What is the general domain of this text. These are you possible responses [politics, sports, healthcare, entertainment, other]"
+    - "What is the general domain of this text. These are you possible domains [politics, sports, healthcare, entertainment, history, medical technology, medical science, other technology, other science, other]. Only respond with the domain."
   method:
     llm:
       endpoint: https://api.openai.com/v1/chat/completions #https://gemini.googleapis.com/v1/chat/completions

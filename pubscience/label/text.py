@@ -34,8 +34,6 @@ import json
 from tqdm import tqdm
 import argparse
 
-load_dotenv(".env")
-
 # TODO: add support for bulk translations, using async methods.
 # TODO: add option for vLLM and ollama
 
@@ -93,7 +91,9 @@ class extract():
                  model: str|None=None,
                  temperature: float=0.01,
                  batch_size: int=1,
-                 max_tokens: int=5048):
+                 max_tokens: int=5048,
+                 env_loc: str='.env'
+    ):
 
         assert(
             provider in ['google', 'anthropic', 'openai', 'groq', 'local']
@@ -106,7 +106,9 @@ class extract():
         self.max_tokens = max_tokens
         self.provider = provider
 
+        load_dotenv(env_loc)
         settings_loc = os.getenv('SETTINGS_YAML')
+        print(f"Loading settings from: {settings_loc}")
         llm_settings = benedict.benedict.from_yaml(settings_loc)
 
         google_gen_kwargs = {
@@ -125,7 +127,7 @@ class extract():
         #     raise NotImplementedError("Support for n>1 not yet implemented. Continuing with n=1.")
 
         # parse yaml
-        if system_prompt.strip()!="":
+        if (system_prompt is not None) and (system_prompt.strip()!=""):
             self.system_prompt = system_prompt
         else:
             try:
@@ -678,3 +680,9 @@ if __name__ == '__main__':
             max_tokens=args.max_tokens
         )
         print(transformer("A 64-year-old female patient with a history of hyperthyroidism on treatment (thiamazole 5 mg once daily, and levothyroxine 62 μg once daily, currently euthyroid with normal thyroid-stimulating hormone, free thyroxine), was referred to our department from a regional hospital following a spider bite, which took place in western Greece (Aetolia-Acarnania region). The bite occurred in the pre-tibial area of the left lower extremity, while cleaning a building in a rural area, early November of 2013. The spider was described as black with red marks, about 2 cm in size and although it was not preserved for identification, the description as well as the clinical signs suggested European black widow spider envenomation."))
+        print("\n\n")
+        print(transformer("The american football player John Anthony described his performance on the pitch as mediocre. He promises that he will train harder and drink Kefir before sleeping."))
+        print("\n\n")
+        print(dict(
+            transformer("The new M3 processor from apple features 4nm chips and boasts 400GB/s bandwidth."))
+        )
