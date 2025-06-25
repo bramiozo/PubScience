@@ -281,7 +281,7 @@ class PubMedProcessor:
 
             # Process remaining batch
             if batch:
-                self.translate_and_write_batch(batch, f)
+                self.translate_and_write_batch(batch, f, read_num)
                 processed_count += len(batch)
 
         logger.info(f"Processed {processed_count} XML files total")
