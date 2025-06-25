@@ -11,15 +11,15 @@ cleaning:
   write_mode: w
 transformation:
   instructions:
-    - "Summarize the core message of this text in a few sentences."
-    - "What is the general domain of this text. These are you possible domains [politics, sports, healthcare, entertainment, history, medical technology, medical science, other technology, other science, other]. Only respond with the domain."
+    - "Rewrite this Dutch consult text from the geriatry department and structure it as a pointwise summary for the geriatrist to evaluate whether "
+    - "We want to know whether the patient, based on these texts, is eligible for the cardiovascular risk management regime."
   method:
     llm:
       endpoint: https://api.openai.com/v1/chat/completions #https://gemini.googleapis.com/v1/chat/completions
       provider: openai #google
       model: gpt-4o #models/gemini-1.5-flash
-      max_tokens: 256
-      system_prompt: "You are a faithful and truthful extractor of information."
+      max_tokens: 4096
+      system_prompt: "You are a faithful and truthful label extractor in the cardio/geriatrics domain. To decide whether someone is eligible for the cardiovascular risk management group. "
     ntm:
       model: nllb200
     out_per_instruction: True

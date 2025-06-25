@@ -15,17 +15,18 @@ BATCH_SIZE = 4
 TEXT_IDS = ['title', 'patient']
 ID_COLS = ['patient_id', 'patient_uid', 'PMID', 'file_path', 'pub_date']
 META_COLS = ['age', 'gender']
-MAX_LENGTH = 10_000
+MAX_LENGTH = 16_000
 MAX_NUM_LINES = 250_293
 SLEEP = 3
 SYSTEM_PROMPT = "You are a faithful and truthful translator in the medical/clinical domain. The user query is formatted as a dictionary {'source_language':..,'target_language':.., 'text_to_translate':..}, your response should ONLY consist of your translation"
 
 vars = {
-    'model': 'gemini-2.5-flash-preview-05-20',
+    'model': 'gemini-2.0-flash',
     'provider': 'google',
     'source_lang': 'english',
     'target_lang': 'dutch',
     'max_tokens': MAX_LENGTH,
+    'max_tokens_truncate': True,
     'system_prompt': SYSTEM_PROMPT,
     'temperature': 0.35,
     'env_loc': '../../.run.env',
