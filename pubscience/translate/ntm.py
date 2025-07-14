@@ -21,7 +21,8 @@ nltk.download('punkt_tab')
 import logging
 
 # Initialize logger
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, filename='log_ntm.txt', filemode='a',
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 import os
