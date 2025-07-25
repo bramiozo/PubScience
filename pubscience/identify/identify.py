@@ -10,8 +10,9 @@ import json
 import pandas as pd
 import xml.etree.ElementTree as ET
 from transformers import pipeline
+from datasets import load_dataset
 from tqdm import tqdm
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Union, Literal
 import gc
 import benedict
 from dotenv import load_dotenv
@@ -21,9 +22,9 @@ load_dotenv(".env")
 
 class Identify:
     def __init__(self, model_path: str|None=None, inclusion_terms: List|None=None, exclusion_terms: List|None=None,
-        model_threshold: float=0.5, model_outcome: bool=True, device: str|int='cpu', id_col: str|None='id', text_col: str|None='text', textfile_readlines: bool=False, file_splitter_regex: str|None=None,
-        max_write_size: int|None=None, max_read_size: int=512*1024,
-        output_file: str='./output/output.jsonl', streaming: bool=False):
+        model_threshold: float=0.5, model_outcome: bool=True, device: str|int='cuda', id_col: str|None='id', text_col: str|None='text', textfile_readlines: bool=False, file_splitter_regex: str|None=None,
+        max_write_size: int|None=None, max_read_size: int=512*1024, max_chunk_length: int=512,
+        write_interval: int=512, batch_size: int=16, output_file: str='./output/output.jsonl', streaming: bool=False):
         """
         Initialize the Identify class for identifying relevant documents.
 
@@ -68,11 +69,15 @@ class Identify:
         self.max_read_size = max_read_size
         self.output_file = output_file
         self.streaming = streaming
+        self.max_chunk_length = max_chunk_length
+        self.batch_size = batch_size
+        self.write_interval = write_interval
 
     @staticmethod
     def load_model(model_path, device):
         # Load the model from the given path
-        return pipeline("text-classification", model=model_path, device=device)
+        return pipeline("text-classification",
+            model=model_path, device=device, truncation=True)
 
     def _term_inclusion(self, text):
         # Check if the text contains any of the inclusion terms
@@ -80,21 +85,47 @@ class Identify:
             return not any(term in text for term in self.exclusion_terms)
         return any(term in text for term in self.inclusion_terms) and not any(term in text for term in self.exclusion_terms)
 
-    def _model_inclusion(self, text):
+    def _model_inclusion(self, text: str)->bool:
         # Check if the model predicts inclusion
         if not self.model:
             return True
 
         result = self.model(text)
-        print(f"Model outcome: {result}")
-        score = result['score']
+        if result[0]['label'] == 'LABEL_0':
+           score = 1 - result[0]['score']
+        elif result[0]['label'] == 'LABEL_1':
+            score = result[0]['score']
+        else:
+            raise ValueError(f"Did not recognize the label: {result[0]}")
 
         if self.model_outcome:
             return score > self.model_threshold
         else:
             return 1-score > self.model_threshold
 
-    def is_relevant(self, text):
+    def _model_inclusion_batch(self, texts: List[str])->List[bool]:
+        # Check if the model predicts inclusion
+        if not self.model:
+            return [True]
+
+        results = self.model(texts)
+
+        scores = []
+        for result in results:
+            if result['label'] == 'LABEL_0':
+                score = 1 - result['score']
+            elif result['label'] == 'LABEL_1':
+                score = result['score']
+            else:
+                raise ValueError(f"Did not recognize the label: {result}")
+
+            if self.model_outcome:
+                 scores.append(score > self.model_threshold)
+            else:
+                scores.append(1-score > self.model_threshold)
+        return scores
+
+    def is_relevant(self, text) -> bool:
         # Determine if a text is relevant based on terms and/or model
         term_relevant = self._term_inclusion(text)
 
@@ -102,7 +133,18 @@ class Identify:
             return term_relevant
 
         model_relevant = self._model_inclusion(text)
-        return term_relevant and model_relevant
+        return term_relevant or model_relevant
+
+    def is_relevant_batch(self, texts: List[str])->List[bool]:
+        # Determine if a text is relevant based on terms and/or model
+
+        term_relevant = [self._term_inclusion(text) for text in texts]
+
+        if self.model is None:
+            return term_relevant
+
+        model_relevant = self._model_inclusion_batch(texts)
+        return [t[0] or t[1] for t in zip(term_relevant, model_relevant)]
 
     def parse_directory(self, directory_path):
         """Parse the directory and identify relevant files"""
@@ -249,7 +291,7 @@ class Identify:
                 doc_id = f"{filename}_{doc_id}"
 
             if self.is_relevant(text):
-                self.included_documents.append(doc_id)
+                self.included_documents.append({"id": doc_id, "text": text})
 
     def parse_jsonl(self, document_path):
         """Parse a JSONL document and identify relevant content"""
@@ -298,7 +340,7 @@ class Identify:
                         doc_id = f"{filename}_{doc_id}"
 
                     if self.is_relevant(text):
-                        self.included_documents.append(doc_id)
+                        self.included_documents.append({"id": doc_id, "text": text})
 
         except Exception as e:
             print(f"Error processing {document_path}: {e}")
@@ -331,7 +373,7 @@ class Identify:
                         doc_id = f"{filename}_{doc_id}"
 
                     if self.is_relevant(text):
-                        self.included_documents.append(doc_id)
+                        self.included_documents.append({"id": doc_id, "text": text})
 
         except Exception as e:
             print(f"Error processing {document_path}: {e}")
@@ -348,12 +390,82 @@ class Identify:
             for doc in self.included_documents:
                 f.write(json.dumps(doc) + '\n')
 
+    def parse_dataset(self, dataset: str|None, split="train", textcol="text", idcol="id", subset="nld_Latn",
+        aggregation: Literal['simple', 'majority', 'selective']='simple'):
+        """
+        Parses Huggingface dataset; uses model and inclusion/exclusion list to identify relevant texts and writes them iteratively to parquet
+        """
+        if dataset is None:
+            raise ValueError("dataset must be specified")
+
+        dataset = load_dataset(dataset, split=split, name=subset, streaming=True)
+        texts_batch = []
+        texts_full = []
+        doc_ids = []
+        for item in tqdm(dataset):
+            text = item[textcol]
+            doc_id = item[idcol]
+
+            # TODO: majority vote and selective (use pysbd or paragraph delimiter)
+            doc_ids += [doc_id]
+            if len(self.included_documents) > self.write_interval:
+                print(f"Writing {self.write_interval} documents to disk...")
+                self.write_documents_to_disk()
+                self.included_documents = []
+
+            if aggregation == 'simple':
+                if len(text) > self.max_chunk_length:
+                    max_len_text = " ".join(text.split(" ")[:self.max_chunk_length])
+                else:
+                    max_len_text = text
+
+                texts_batch += [max_len_text]
+                texts_full += [text]
+
+                if len(texts_batch)>=self.batch_size:
+                    scores = self.is_relevant_batch(texts_batch)
+                    for k, score in enumerate(scores):
+                        if score == True:
+                            self.included_documents.append({"id": doc_ids[k], "text": texts_full[k]})
+                    texts_batch = []
+                    texts_full = []
+                    doc_ids = []
+            elif aggregation == 'majority':
+                raise NotImplementedError("Majority aggregation not yet implemented")
+                votes = []
+                word_list = text.split(" ")
+                for i in range(len(word_list)//self.max_chunk_length):
+                    chunk = " ".join(word_list[i*self.max_chunk_length:(i+1)*self.max_chunk_length])
+                    if self.is_relevant(chunk):
+                        votes.append(1)
+                    else:
+                        votes.append(0)
+                if sum(votes) > len(votes)//2:
+                    self.included_documents.append({"id": doc_id, "text": text})
+            elif aggregation == 'selective':
+                # not yet available
+                # TODO: implement selective aggregation
+                raise NotImplementedError("Selective aggregation not yet implemented")
+            else:
+                raise ValueError(f"Invalid aggregation type: {aggregation}")
+
+        self.write_documents_to_disk()
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Identify relevant content in XML documents")
+    parser = argparse.ArgumentParser(description="Identify relevant content in documents")
     parser.add_argument("--directory", help="Directory containing documents")
+    parser.add_argument("--dataset", help="Huggingface dataset")
     parser.add_argument("--output", help="Output file path")
+    parser.add_argument("--model", help="Name of the HF model..")
     parser.add_argument("--streaming", action="store_true", help="Enable streaming mode")
     args = parser.parse_args()
 
-    identifier = Identify(output_file=args.output, streaming=args.streaming)
-    identifier.parse_directory(args.directory)
+    identifier = Identify(output_file=args.output, streaming=args.streaming, model_path=args.model)
+
+    if args.directory:
+        print("Parsing directory...")
+        identifier.parse_directory(args.directory)
+
+    if args.dataset:
+        print("Parsing dataset...")
+        identifier.parse_dataset(args.dataset)
