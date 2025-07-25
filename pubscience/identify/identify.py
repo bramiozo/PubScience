@@ -81,9 +81,9 @@ class Identify:
 
     def _term_inclusion(self, text):
         # Check if the text contains any of the inclusion terms
-        if not self.inclusion_terms:  # If no inclusion terms, consider all texts
-            return not any(term in text for term in self.exclusion_terms)
-        return any(term in text for term in self.inclusion_terms) and not any(term in text for term in self.exclusion_terms)
+        #if not self.inclusion_terms:  # If no inclusion terms, consider all texts
+        #    return not any(term in text for term in self.exclusion_terms)
+        return any(term in text for term in self.inclusion_terms) and (not any(term in text for term in self.exclusion_terms))
 
     def _model_inclusion(self, text: str)->bool:
         # Check if the model predicts inclusion
@@ -144,7 +144,7 @@ class Identify:
             return term_relevant
 
         model_relevant = self._model_inclusion_batch(texts)
-        return [t[0] or t[1] for t in zip(term_relevant, model_relevant)]
+        return [(t[0]==True) or (t[1]==True) for t in zip(term_relevant, model_relevant)]
 
     def parse_directory(self, directory_path):
         """Parse the directory and identify relevant files"""
