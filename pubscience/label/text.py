@@ -33,6 +33,7 @@ from time import sleep
 import json
 from tqdm import tqdm
 import argparse
+import torch
 
 # TODO: add support for bulk translations, using async methods.
 # TODO: add option for vLLM and ollama
@@ -42,7 +43,8 @@ unsloth_models = [
     "unsloth/mistral-7b-bnb-4bit",
     "unsloth/mistral-7b-instruct-v0.2-bnb-4bit",
     "unsloth/Llama-4-Scout-17B-16E-Instruct-unsloth-bnb-4bit",
-    "unsloth/Phi-4-mini-instruct-GGUF"
+    "unsloth/Phi-4-mini-instruct-GGUF",
+    "unsloth/gpt-oss-20b-GGUF"
 ]
 
 # Prompt format for local models
@@ -149,6 +151,11 @@ class extract():
         else:
             self.instruction_list = llm_settings['transformation']['instructions']
 
+        if isinstance(provider, str)==False:
+            try:
+                provider = llm_settings['transformation']['method']['llm']['provider']
+            except Exception as e:
+                raise ValueError(f"Could not parse provider from yaml: {e}. Please identify an available provider.")
 
         if provider == 'openai':
             self.client = openai_client(api_key=os.getenv('OPENAI_LLM_API_KEY'))
@@ -435,7 +442,6 @@ class extract():
         # Calculate logprob from scores if available
         logprob = None
         if hasattr(response, 'scores') and response.scores:
-            import torch
             # Convert scores to probabilities and sum log probabilities
             total_logprob = 0
             for i, score in enumerate(response.scores):
