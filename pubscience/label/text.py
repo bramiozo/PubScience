@@ -35,6 +35,7 @@ from tqdm import tqdm
 import argparse
 import torch
 
+
 # TODO: add support for bulk translations, using async methods.
 # TODO: add option for vLLM and ollama
 
@@ -43,8 +44,24 @@ unsloth_models = [
     "unsloth/mistral-7b-bnb-4bit",
     "unsloth/mistral-7b-instruct-v0.2-bnb-4bit",
     "unsloth/Llama-4-Scout-17B-16E-Instruct-unsloth-bnb-4bit",
+    "unsloth/Llama-3.2-1B-Instruct-bnb-4bit",
+    "unsloth/Llama-3.2-3B-Instruct-bnb-4bit",
     "unsloth/Phi-4-mini-instruct-GGUF",
     "unsloth/gpt-oss-20b-GGUF"
+]
+
+unsloth_base_models = [
+    "gemma",
+    "mistral",
+    "llama-3.1",
+    "llama-3.2",
+    "llama-3.3",
+    "llama-31", 
+    "llama-32",
+    "llama-33",
+    "phi-4",
+    "gemma-3",
+    "gemma3"
 ]
 
 # Prompt format for local models
@@ -58,6 +75,8 @@ prompt_format = """Below is an instruction that describes a task, paired with an
 
 ### Response:
 {}"""
+
+
 
 class llm_input(BaseModel):
     instruction: str
@@ -94,6 +113,7 @@ class extract():
                  temperature: float=0.01,
                  batch_size: int=1,
                  max_tokens: int=5048,
+                 max_new_tokens: int=5048,
                  env_loc: str='.env'
     ):
 
@@ -103,6 +123,17 @@ class extract():
         assert isinstance(system_prompt,str),f"system_prompt must be a string"
         assert isinstance(instruction_list,list),f"instruction_list must be a list"
 
+        if provider == 'local':
+            assert model is not None, "Model must be specified for local provider"
+            assert temperature >= 0, "Temperature must be non-negative"
+            assert max_tokens > 0, "max_tokens must be greater than 0"
+            if '4bit' in model:
+                four_bit = True
+            else:
+                four_bit = False
+
+        self.max_new_tokens = max_new_tokens
+       
         self.system_prompt = system_prompt
         self.instruction_list = instruction_list
         self.max_tokens = max_tokens
@@ -184,18 +215,32 @@ class extract():
         elif provider == 'groq':
             self.client = Groq(api_key=os.getenv('GROQ_LLM_API_KEY'))
         elif provider == 'local':
-            # EuroLLM-9B-Instruct
-            # unsloth/Mixtral-8x7B-v0.1-bnb-4bit
-            import torch
             from unsloth import FastLanguageModel
+            from unsloth.chat_templates import CHAT_TEMPLATES, get_chat_template
+
+            # extract base model by checking against unsloth_base_models
+            model_base = None
+            for base in unsloth_base_models:
+                if base in model.lower():
+                    model_base = base
+                    break
+            if model_base is None:
+                raise ValueError(f"Model {model} does not match our supported unsloth base models: {unsloth_base_models}. Please specify a valid model.")
+
+            if CHAT_TEMPLATES.get(model_base, None) is None:
+                raise ValueError(f"Chat template for model {model} not found in CHAT_TEMPLATES. Available templates: {list(CHAT_TEMPLATES.keys())}")
+   
             if model not in unsloth_models:
                 raise ValueError(f"""Model {model} not available.
                     Available models are: {unsloth_models}.
                     For more models see: https://huggingface.co/unsloth""")
 
             self.client, self.tokenizer = FastLanguageModel.from_pretrained(model_name=model,
-                max_seq_length=max_tokens, load_in_4bit=True
+                max_seq_length=max_tokens, load_in_4bit=four_bit
             )
+            self.tokenizer = get_chat_template(self.tokenizer, 
+                                                             chat_template=model_base)  # Set the chat template for the tokenizer
+
             FastLanguageModel.for_inference(self.client) # Enable native 2x faster inference
 
             # Set device
@@ -236,7 +281,7 @@ class extract():
         elif self.provider == 'groq':
             return self.__transform_groq(InputText)
         elif self.provider == 'local':
-            return self.__translate_local(InputText)
+            return self.__transform_local(text)
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")
 
@@ -409,35 +454,49 @@ class extract():
 
     def __transform_local(self, InputText: llm_input) -> LLMOutput:
         _InputText = str(InputText)
-        inputs = self.tokenizer([
-            prompt_format.format(
-                self.system_prompt,
-                _InputText,
-                ""
-            )
-        ],
-            return_tensors="pt").to(self.device)
+        # inputs = self.tokenizer([
+        #     prompt_format.format(
+        #         self.system_prompt,
+        #         _InputText,
+        #         ""
+        #     )
+        # ], return_tensors="pt").to(self.device)
+
+        input_ids = self.tokenizer.apply_chat_template([
+            {'role': 'system', 'content': self.system_prompt},
+            {'role': 'user', 'content': _InputText}
+        ], 
+        tokenize=True, 
+        add_generation_prompt=True, 
+        return_tensors="pt").to(self.device)
+
+        if input_ids.dim() == 1:
+            # (seq_len,) → (1, seq_len)
+            input_ids = input_ids.unsqueeze(0)
+
+        attention_mask = torch.ones_like(input_ids)
+        inputs = {
+            "input_ids":      input_ids,
+            "attention_mask": attention_mask
+        }
 
         response = self.client.generate(
             **inputs,
-            **self.gen_kwargs,
-            max_new_tokens = min(1.5*len(_InputText.split()), self.max_tokens),
+            max_new_tokens = min(self.max_new_tokens, self.max_tokens),
             use_cache=True,
-            pad_token_id = self.tokenizer.eos_token_id,
             return_dict_in_generate=True,
-            output_scores=True  # This enables logprob calculation
+            output_scores=True,
+            **self.gen_kwargs
         )
 
+        orig_len = inputs["input_ids"].shape[1]        
         # Decode the generated text
         if hasattr(response, 'sequences'):
-            decoded_text = self.tokenizer.batch_decode(response.sequences, skip_special_tokens=True)[0]
+            gen_ids  = response.sequences[0][orig_len:]
+            decoded_text = self.tokenizer.decode(gen_ids, skip_special_tokens=True).strip()
         else:
-            decoded_text = self.tokenizer.batch_decode(response, skip_special_tokens=True)[0]
-
-        # Extract only the response part (after the prompt)
-        prompt_text = prompt_format.format(self.system_prompt, _InputText, "")
-        if decoded_text.startswith(prompt_text):
-            decoded_text = decoded_text[len(prompt_text):].strip()
+            gen_ids  = response[0][orig_len:]
+            decoded_text = self.tokenizer.decode(response, skip_special_tokens=True).strip()
 
         # Calculate logprob from scores if available
         logprob = None
@@ -464,7 +523,7 @@ class extract():
             logprob=logprob,
             model=self.model,
             provider=self.provider,
-            instruction=InputText.instruction,
+            instruction="N/A",  # Local models do not use instructions in the same way
             metadata=metadata
         )
 
@@ -652,7 +711,7 @@ if __name__ == '__main__':
     parser.add_argument('--instruction_list', type=str, help='List of instructions for the LLM, items separated by commas', default=None)
     parser.add_argument('--provider', type=str, help='Provider for the LLM', default='google')
     parser.add_argument('--model', type=str, help='Model for the LLM', default='gemini-1.5-flash')
-    parser.add_argument('--max_tokens', type=int, help='Maximum tokens for the LLM', default=8_000)
+    parser.add_argument('--max_tokens', type=int, help='Maximum tokens for the LLM', default=5_000)
     parser.add_argument('--folder_path', type=str, help='Path to folder with .txt files', default=None)
     parser.add_argument('--input_path', type=str, help='Path to input json', default=None)
     parser.add_argument('--text_fields', nargs='+', type=str, help='Fields in json to transform', default=['patient'])
@@ -686,9 +745,4 @@ if __name__ == '__main__':
             max_tokens=args.max_tokens
         )
         print(transformer("A 64-year-old female patient with a history of hyperthyroidism on treatment (thiamazole 5 mg once daily, and levothyroxine 62 μg once daily, currently euthyroid with normal thyroid-stimulating hormone, free thyroxine), was referred to our department from a regional hospital following a spider bite, which took place in western Greece (Aetolia-Acarnania region). The bite occurred in the pre-tibial area of the left lower extremity, while cleaning a building in a rural area, early November of 2013. The spider was described as black with red marks, about 2 cm in size and although it was not preserved for identification, the description as well as the clinical signs suggested European black widow spider envenomation."))
-        print("\n\n")
-        print(transformer("The american football player John Anthony described his performance on the pitch as mediocre. He promises that he will train harder and drink Kefir before sleeping."))
-        print("\n\n")
-        print(dict(
-            transformer("The new M3 processor from apple features 4nm chips and boasts 400GB/s bandwidth."))
-        )
+      

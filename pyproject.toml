@@ -26,6 +26,7 @@ accelerate = "^0.34.2"
 sentencepiece = "^0.2.0"
 nltk = "^3.9.1"
 torch = { version = "2.6.0", source = "torch" }
+triton-windows = "3.2.0.post19"
 #torch = "^2.5.1"
 transformers = "^4.45.1"
 zstandard = "^0.23.0"
@@ -44,7 +45,7 @@ phonenumbers = "^8.13.52"
 scikit-learn = "^1.6.0"
 spacy = "^3.8.3"
 polars = "^1.19.0"
-unsloth = "^2024.12.12"
+unsloth = "^2025.8.1"
 
 [build-system]
 requires = ["poetry-core"]
@@ -53,4 +54,4 @@ build-backend = "poetry.core.masonry.api"
 [[tool.poetry.source]]
 name = "torch"
 url = "https://download.pytorch.org/whl/cu124"
-priority = "supplemental"
+priority = "explicit"

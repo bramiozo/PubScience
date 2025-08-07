@@ -11,15 +11,14 @@ cleaning:
   write_mode: w
 transformation:
   instructions:
-    - "Rewrite this Dutch consult text from the geriatry department and structure it as a pointwise summary for the geriatrist to evaluate whether a patient should follow a cardiovascular risk management protocol"
-    - "We want to know whether the patient, based on these texts, is eligible for the cardiovascular risk management regime. Only respond with yes / no ."
+    - "We want to know whether the patient, based on this Dutch medical consult text, is eligible for the cardiovascular risk management regime. Only respond with yes / no ."
   method:
     llm:
       #endpoint: https://api.openai.com/v1/chat/completions #https://gemini.googleapis.com/v1/chat/completions
       provider: local #google
       model: unsloth/gemma-3-1b-it-GGUF #models/gemini-1.5-flash
       max_tokens: 4096
-      system_prompt: "You are a faithful and truthful Dutch label extractor in the cardio/geriatrics domain. To decide whether someone is eligible for the cardiovascular risk management group. "
+      system_prompt: "You are a faithful and truthful Dutch label extractor in the cardio/geriatrics domain. "
     ntm:
       model: nllb200
     out_per_instruction: True
