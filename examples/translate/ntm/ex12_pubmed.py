@@ -288,7 +288,7 @@ class PubMedProcessor:
                         self.translate_and_write_batch(batch, f, 0)
                         processed_count += len(batch)
                         batch = []
-                        logger.info(f"Processed {processed_count} files...")
+                        logger.info(f"Processed {processed_count} files\tOutput:{output_file}\tLast:{xml_file}")
 
                 except Exception as e:
                     logger.error(f"Error processing {xml_file}: {e}")
