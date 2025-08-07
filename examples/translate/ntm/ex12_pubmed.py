@@ -86,6 +86,7 @@ class PubMedProcessor:
             target_lang=target_lang,
             use_accelerate=multi_gpu
         )
+        self.processed_num = 0
 
     def get_tar_gz_files(self, server_path: str) -> List[str]:
         """Get list of .tar.gz files from FTP server."""
