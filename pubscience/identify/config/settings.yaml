@@ -1,5 +1,15 @@
 inclusion_terms:
-  ["cardiologie", "cardiale pathologie", "atherosclerose", "cardiomyopathie", "STEMI", "aderverkalking", "hartinfarct"]
-exclusion_terms: ["feesten", "showbusiness", "huizen", "auto", "commercieel", "marketing", "winst", "liefde", "wrok"]
+  - cardiologie
+  - cardiale pathologie
+  - atherosclerose
+  - cardiomyopathie
+  - aderverkalking
+  - hartinfarct
+  - orthopedisch
+  - reumatoide artritis
+  - neuropathie
+  - anamnese
+exclusion_terms:
+  ["feesten", "showbusiness", "huizen", "auto", "commercieel", "marketing", "winst", "liefde", "wrok", "muziek"]
 file_splitter:
   gigacorpus: r"[a-z0-9\-]{40,70}"

@@ -47,8 +47,17 @@ if os.path.exists(OUTPUT_LOC):
     logger.info(f"Output file {OUTPUT_LOC} already exists")
     file_write = open(OUTPUT_LOC, 'a', encoding='utf-8')
     file_write_read = open(OUTPUT_LOC, 'r', encoding='utf-8')
-    # get list of k's with success==True
-    k_list = [k for k, line in enumerate(file_write_read) if json.loads(line)['succes']]
+    k_list = []
+    for k, line in tqdm(enumerate(file_write_read)):
+        try:
+            d = json.loads(line)
+            if d.get('success', False) | d.get('succes', False):
+                k_list.append(k)
+        except json.JSONDecodeError:
+            logger.error(f"Error decoding JSON at line {k}")
+            continue
+    file_write_read.close()
+
     logger.info(f"Found {len(k_list)} labeled texts")
 else:
     logger.info(f"Output file {OUTPUT_LOC} does not exist")
@@ -82,7 +91,7 @@ with open(JSON_LOC, 'r') as f:
                         logprob=None,
                         model=kwargs['model'],
                         provider=kwargs['provider'],
-                        instruction=TextLabeler.instruction_list,
+                        instruction="|".join(TextLabeler.instruction_list),
                         metadata=None)
                 success = False
                 logger.error(f"Error processing text {input_text}: {e}")
@@ -94,7 +103,7 @@ with open(JSON_LOC, 'r') as f:
                 'label': raw_output.content,
                 'assumed_label': input_label,
                 'model': raw_output.model,
-                'instructions': raw_output.instruction,
+                'instructions': "|".join(TextLabeler.instruction_list),
                 'meta': raw_output.metadata,
                 'proba': np.exp(raw_output.logprob) if isinstance(raw_output, float) else np.nan
             }
@@ -114,14 +123,14 @@ with open(JSON_LOC, 'r') as f:
                             logprob=None,
                             model=kwargs['model'],
                             provider=kwargs['provider'],
-                            instruction=TextLabeler.instruction_list,
+                            instruction="|".join(TextLabeler.instruction_list),
                             metadata=None)
                     success = False
                     logger.error(f"Error processing text {input_text}: {e}")
 
             output = {
                 'k': k,
-                'succes': success,
+                'success': success,
                 'text': input_text,
                 'label': input_label if rsamp==False else raw_output.content,
                 'assumed_label': input_label,
