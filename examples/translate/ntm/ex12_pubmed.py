@@ -9,8 +9,9 @@ Usage:
     python ex12_pubmed.py
 """
 
+
+
 import os
-import sys
 import json
 import tarfile
 import ftplib
@@ -18,12 +19,15 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
 import re
-import tempfile
 import shutil
 import logging
 import argparse
 from typing import List, Dict, Any, Optional, Literal
-import ftfy
+
+try:
+    import ftfy
+except ImportError:
+    ftfy = None
 
 # Import the translation module
 from pubscience.translate import ntm
@@ -139,7 +143,8 @@ class PubMedProcessor:
             return ""
 
         # Use ftfy to fix text encoding issues
-        text = ftfy.fix_text(text)
+        if ftfy:
+            text = ftfy.fix_text(text)
 
         # Remove xref tags and their content
         text = re.sub(r'<xref[^>]*>.*?</xref>', '', text, flags=re.DOTALL)
@@ -242,23 +247,33 @@ class PubMedProcessor:
         return '. '.join(cleaned_sentences)
 
     def process_xml_files(self, extract_dir: Path, output_file: Path):
-        """Process all XML files in the extracted directory."""
+        """Process all XML files in the extracted directory, skipping those already translated."""
+        # Find all XMLs in extraction directory
         xml_files = list(extract_dir.rglob('*.xml'))
-        logger.info(f"Found {len(xml_files)} XML files to process")
+        logger.info(f"Found {len(xml_files)} XML files to process in {extract_dir}")
+
+        # Determine which files have been translated already by reading output JSONL
+        processed_files = set()
+        if os.path.exists(output_file):
+            with open(output_file, 'r', encoding='utf-8') as fr:
+                for line in fr:
+                    try:
+                        rec = json.loads(line)
+                        fname = rec.get('meta_filename')
+                        if fname:
+                            processed_files.add(fname)
+                    except json.JSONDecodeError:
+                        continue
+        # Filter out already processed XML files
+        initial = len(xml_files)
+        xml_files = [f for f in xml_files if f.name not in processed_files]
+        skipped = initial - len(xml_files)
+        logger.info(f"Processing {len(xml_files)} new XML files (skipped {skipped})")
 
         processed_count = 0
         batch = []
-
-        # if output_file already exists
-        # check number of lines and begin
-        if os.path.exists(output_file):
-            with open(output_file, 'r', encoding='utf-8') as fr:
-                read_num = len(fr.readlines())
-        else:
-            read_num = 0
-
+        # Append translations to output file
         with open(output_file, 'a', encoding='utf-8') as f:
-            self.processed_num = 0
             for xml_file in xml_files:
                 try:
                     # Extract text and metadata
@@ -270,7 +285,7 @@ class PubMedProcessor:
 
                     # Process batch when it reaches batch_size
                     if len(batch) >= self.batch_size:
-                        self.translate_and_write_batch(batch, f, read_num)
+                        self.translate_and_write_batch(batch, f, 0)
                         processed_count += len(batch)
                         batch = []
                         logger.info(f"Processed {processed_count} files...")
@@ -281,7 +296,7 @@ class PubMedProcessor:
 
             # Process remaining batch
             if batch:
-                self.translate_and_write_batch(batch, f, read_num)
+                self.translate_and_write_batch(batch, f, 0)
                 processed_count += len(batch)
 
         logger.info(f"Processed {processed_count} XML files total")
@@ -472,7 +487,7 @@ def main():
     logging.getLogger().setLevel(getattr(logging, args.log_level))
 
     # Log the configuration
-    logger.info(f"Starting PubMed processor with configuration:")
+    logger.info("Starting PubMed processor with configuration:")
     logger.info(f"  Model: {args.model_name}")
     logger.info(f"  Max length: {args.max_length}")
     logger.info(f"  Target language: {args.target_lang}")
