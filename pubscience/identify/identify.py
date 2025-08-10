@@ -23,9 +23,9 @@ load_dotenv(".env")
 class Identify:
     def __init__(self, model_path: str|None=None, inclusion_terms: List|None=None, exclusion_terms: List|None=None,
         model_threshold: float=0.5, model_outcome: bool=True, device: str|int='cuda', id_col: str|None='id', text_col: str|None='text', textfile_readlines: bool=False, file_splitter_regex: str|None=None,
-        max_write_size: int|None=None, max_read_size: int=512*1024, max_chunk_length: int=512,
-        write_interval: int=1024, batch_size: int=32, output_file: str='./output/output.jsonl',
-        streaming: bool=False, min_length: int=32, start_from_previous: bool=True):
+        max_write_size: int|None=None, max_read_size: int=512*1024, max_chunk_length: int=256,
+        write_interval: int=1024, batch_size: int=64, output_file: str='./output/output.jsonl',
+        streaming: bool=False, min_length: int=64, start_from_previous: bool=True):
         """
         Initialize the Identify class for identifying relevant documents.
 
