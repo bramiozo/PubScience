@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 FREEZE_EVERY_N_STEPS = 32
 FREEZE_DURATION = 5
-MIN_TOKEN_COUNT = 16
+MIN_TOKEN_COUNT = 64
 
 JSON_LOC= os.environ.get('MedNonMed')
 assert(JSON_LOC is not None), "JSON_LOC is not set"

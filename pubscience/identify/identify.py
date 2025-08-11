@@ -24,7 +24,8 @@ class Identify:
     def __init__(self, model_path: str|None=None, inclusion_terms: List|None=None, exclusion_terms: List|None=None,
         model_threshold: float=0.5, model_outcome: bool=True, device: str|int='cuda', id_col: str|None='id', text_col: str|None='text', textfile_readlines: bool=False, file_splitter_regex: str|None=None,
         max_write_size: int|None=None, max_read_size: int=512*1024, max_chunk_length: int=512,
-        write_interval: int=512, batch_size: int=16, output_file: str='./output/output.jsonl', streaming: bool=False):
+        write_interval: int=1024, batch_size: int=32, output_file: str='./output/output.jsonl',
+        streaming: bool=False, min_length: int=32, start_from_previous: bool=True):
         """
         Initialize the Identify class for identifying relevant documents.
 
@@ -72,7 +73,27 @@ class Identify:
         self.max_chunk_length = max_chunk_length
         self.batch_size = batch_size
         self.write_interval = write_interval
+        self.min_length = min_length
 
+        # if output file already exists, collect a set with the id's based on the self.id_col
+        self.existing_ids = set()
+        if os.path.exists(self.output_file):
+            with open(self.output_file, 'r') as f:
+                for line in f:
+                    try:
+                        doc = json.loads(line)
+                        doc_id = doc.get(self.id_col)
+                        if doc_id is not None:
+                            self.existing_ids.add(doc_id)
+                    except Exception:
+                        continue
+        # if set empty set to None
+        if len(self.existing_ids) == 0:
+            self.existing_ids = None
+        else:
+            print(f"Found: {len(self.existing_ids)} prior processed ids, skipping these..", flush=True)
+
+        self.start_from_previous = start_from_previous
     @staticmethod
     def load_model(model_path, device):
         # Load the model from the given path
@@ -402,52 +423,70 @@ class Identify:
         texts_batch = []
         texts_full = []
         doc_ids = []
+        text_lens = []
+        seen_previous = set()
         for item in tqdm(dataset):
             text = item[textcol]
             doc_id = item[idcol]
 
-            # TODO: majority vote and selective (use pysbd or paragraph delimiter)
-            doc_ids += [doc_id]
-            if len(self.included_documents) > self.write_interval:
-                print(f"Writing {self.write_interval} documents to disk...")
-                self.write_documents_to_disk()
-                self.included_documents = []
+            text_len = len(text.split())
+            text_lens.append(text_len)
 
-            if aggregation == 'simple':
-                if len(text) > self.max_chunk_length:
-                    max_len_text = " ".join(text.split(" ")[:self.max_chunk_length])
-                else:
-                    max_len_text = text
+            ### This is logic to start from previous
+            #######################################
+            if self.start_from_previous:
+                if self.existing_ids is not None:
+                    if doc_id in self.existing_ids:
+                        seen_previous.add(doc_id)
+                        continue
 
-                texts_batch += [max_len_text]
-                texts_full += [text]
+                if (len(seen_previous)<len(self.existing_ids)):
+                    continue
+            ########################################
 
-                if len(texts_batch)>=self.batch_size:
-                    scores = self.is_relevant_batch(texts_batch)
-                    for k, score in enumerate(scores):
-                        if score == True:
-                            self.included_documents.append({"id": doc_ids[k], "text": texts_full[k]})
-                    texts_batch = []
-                    texts_full = []
-                    doc_ids = []
-            elif aggregation == 'majority':
-                raise NotImplementedError("Majority aggregation not yet implemented")
-                votes = []
-                word_list = text.split(" ")
-                for i in range(len(word_list)//self.max_chunk_length):
-                    chunk = " ".join(word_list[i*self.max_chunk_length:(i+1)*self.max_chunk_length])
-                    if self.is_relevant(chunk):
-                        votes.append(1)
+            if text_len >=self.min_length:
+                # TODO: majority vote and selective (use pysbd or paragraph delimiter)
+                doc_ids += [doc_id]
+                if len(self.included_documents) > self.write_interval:
+                    print(f"Writing {self.write_interval} documents to disk...average text_len: {sum(text_lens)/len(text_lens)}")
+                    self.write_documents_to_disk()
+                    self.included_documents = []
+
+                if aggregation == 'simple':
+                    if len(text) > self.max_chunk_length:
+                        max_len_text = " ".join(text.split(" ")[:self.max_chunk_length])
                     else:
-                        votes.append(0)
-                if sum(votes) > len(votes)//2:
-                    self.included_documents.append({"id": doc_id, "text": text})
-            elif aggregation == 'selective':
-                # not yet available
-                # TODO: implement selective aggregation
-                raise NotImplementedError("Selective aggregation not yet implemented")
-            else:
-                raise ValueError(f"Invalid aggregation type: {aggregation}")
+                        max_len_text = text
+
+                    texts_batch += [max_len_text]
+                    texts_full += [text]
+
+                    if len(texts_batch)>=self.batch_size:
+                        scores = self.is_relevant_batch(texts_batch)
+                        for k, score in enumerate(scores):
+                            if score == True:
+                                self.included_documents.append({"id": doc_ids[k], "text": texts_full[k]})
+                        texts_batch = []
+                        texts_full = []
+                        doc_ids = []
+                elif aggregation == 'majority':
+                    raise NotImplementedError("Majority aggregation not yet implemented")
+                    votes = []
+                    word_list = text.split(" ")
+                    for i in range(len(word_list)//self.max_chunk_length):
+                        chunk = " ".join(word_list[i*self.max_chunk_length:(i+1)*self.max_chunk_length])
+                        if self.is_relevant(chunk):
+                            votes.append(1)
+                        else:
+                            votes.append(0)
+                    if sum(votes) > len(votes)//2:
+                        self.included_documents.append({"id": doc_id, "text": text})
+                elif aggregation == 'selective':
+                    # not yet available
+                    # TODO: implement selective aggregation
+                    raise NotImplementedError("Selective aggregation not yet implemented")
+                else:
+                    raise ValueError(f"Invalid aggregation type: {aggregation}")
 
         self.write_documents_to_disk()
 
@@ -457,10 +496,14 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", help="Huggingface dataset")
     parser.add_argument("--output", help="Output file path")
     parser.add_argument("--model", help="Name of the HF model..")
+    parser.add_argument("--min_length", default=32, help="Minimum number of words of document..")
     parser.add_argument("--streaming", action="store_true", help="Enable streaming mode")
     args = parser.parse_args()
 
-    identifier = Identify(output_file=args.output, streaming=args.streaming, model_path=args.model)
+    identifier = Identify(output_file=args.output,
+                          streaming=args.streaming,
+                          model_path=args.model,
+                          min_length=args.min_length)
 
     if args.directory:
         print("Parsing directory...")
