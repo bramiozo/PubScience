@@ -37,7 +37,7 @@ class PubTatorCorpusReader:
         }
 
     def load_corpus(self):
-        with open(self.file_path, 'r') as file:
+        with open(self.file_path, 'r', encoding='utf-8') as file:
             lines = file.readlines()
             return self.__parse_lines(lines)
 

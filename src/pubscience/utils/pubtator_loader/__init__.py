@@ -1,2 +1,3 @@
-from .models import PubTatorEntity, PubTatorDocument # noqa
-from .pubtator_corpus_reader import PubTatorCorpusReader
+from pubscience.utils.pubtator_loader.models.pubtator_entities import PubTatorEntity
+from pubscience.utils.pubtator_loader.models.pubtator_document import PubTatorDocument # noqa
+from pubscience.utils.pubtator_loader.pubtator_corpus_reader import PubTatorCorpusReader

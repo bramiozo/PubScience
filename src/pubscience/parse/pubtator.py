@@ -42,13 +42,12 @@ def pubtator_to_corpus(pubtator_file: str, id_col: str='id', text_col: str='text
                 'start': entity.start_index,
                 'end': entity.end_index,
                 'text': entity.text_segment,
-                'id': entity.entity_id,
                 'tag': sem_group
             })
         temp_dict[span_col] = ent_list
 
         if add_seinen_integration:
-            temp_dict[f"{text_col}_seinen"] = SeinenCorpusPrep(temp_dict[text_col], ent_list)
+            temp_dict[f"{text_col}_seinen"] = SeinenCorpusPrep(temp_dict[text_col], temp_dict['title'], ent_list)
 
         corpus.append(temp_dict)
     return corpus
@@ -57,24 +56,28 @@ def pubtator_to_corpus(pubtator_file: str, id_col: str='id', text_col: str='text
 def add_semantic_types(tui: str, tui_sem_map: Dict[str,str]) -> str:
     return tui_sem_map.get(tui, 'Unknown')
 
-def SeinenCorpusPrep(text: str, entities: List[Dict])->str:
+def SeinenCorpusPrep(text: str, title:str|None, entities: List[Dict], sep: str=".")->str:
     """
     Source: https://pmc.ncbi.nlm.nih.gov/articles/PMC11258409/
-    Takes a NEL dictionary and transforms it into an integrated corpus format, accoriding to Seinen et al. (2024).
+    Takes a NEL dictionary and transforms it into an integrated corpus format, according to Seinen et al. (2024).
     """
     offset = 0
-    for entity in entities:
+    entities_sorted = sorted(entities, key=lambda e: (e['start'], e['end']), reverse=False)
+    current_text = text if title is None else f"{title}{sep}{text}"
+    for entity in entities_sorted:
+        start, end = entity['start'], entity['end']
+        surface = entity.get('text', text[start:end])
         if 'cui' in entity:
-            replacement =  f"[[{entity['text']}][{entity['cui']}]]"
+            replacement =  f"[[{surface}][{entity['cui']}]]"
         else:
-            replacement =  f"[[{entity['text']}][{entity['tui']}]]"
+            replacement =  f"[[{surface}][{entity['tui']}]]"
         
-        next_end = len(replacement) + entity['start'] + offset
-        post_text = text[entity['end']:]
-        text[entity['start']:next_end] = replacement
-        offset += next_end - entity['end']
-        
-    return text.strip()
+        prior_text = current_text[:start + offset]
+        post_text = current_text[end + offset:]
+        current_text = prior_text + replacement + post_text
+        offset += len(replacement) - (end - start)
+
+    return current_text.strip()
  
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser(description="Convert PubTator file to corpus format.")
@@ -82,3 +85,29 @@ if __name__ == "__main__":
     argparser.add_argument('--id_col', type=str, default='id', help='Column name for document ID.')
     argparser.add_argument('--text_col', type=str, default='text', help='Column name for text content.')
     argparser.add_argument('--span_col', type=str, default='tags', help='Column name for span information.')
+    argparser.add_argument('--output_file', type=str, required=True, help='Path to save the JSONL output corpus file.')
+
+    args = argparser.parse_args()
+    # check if folder of output_file exists, if not create it
+    import os
+    from pathlib import Path
+    output_path = Path(argparser.parse_args().output_file).parent
+    if not output_path.exists():
+        os.makedirs(output_path)
+
+
+    # create the corpus
+    new_corpus = pubtator_to_corpus(
+        pubtator_file=args.pubtator_file,
+        id_col=args.id_col,
+        text_col=args.text_col,
+        span_col=args.span_col,
+        add_semantic_group=False,  # Assuming we want to add semantic groups
+        add_seinen_integration=True  # Assuming we want to integrate Seinen format
+    )
+
+    # write list of dictionaries to jsonl file
+    with open(args.output_file, 'w', encoding='utf-8') as f:
+        for item in new_corpus:
+            f.write(json.dumps(item, ensure_ascii=False) + '\n')
+
