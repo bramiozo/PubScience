@@ -3,6 +3,7 @@ name = "pubscience"
 version = "0.1.0"
 description = ""
 authors = ["Bram van Es <bramiozo@gmail.com>"]
+packages = [{from="src", include="pubscience"}]
 license = "GPL-3"
 readme = "README.md"
 
