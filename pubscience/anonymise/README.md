@@ -1,5 +1,0 @@
-# DEID
-
-* deduce
-* presidio
-* NER

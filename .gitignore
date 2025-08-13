@@ -33,5 +33,13 @@ pyrightconfig.json
 .pyc
 poetry.lock
 pubscience/__pycache__/*
+pubscience/__pycache__
 unsloth_compiled_cache/*
 unsloth_compiled_cache
+poetry.lock
+*.cpython-310.pyc
+*.cpython-311.pyc
+*.cpython-312.pyc
+*.cpython-313.pyc
+__pycache__/*
+__pycache__
