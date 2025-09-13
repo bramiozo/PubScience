@@ -3,6 +3,13 @@ import re
 import xml
 
 sources = {
+      'UK': {
+        'link': 'https://oai.archiveshub.jisc.ac.uk/ArchivesHub',
+        'pdf': 'dc:identifier',
+        'follow': 'retrieve',
+        'language': 'dc:language',
+        'type': 'dc:type'  
+      },
       'Tilburg': {'link': f'https://pure.uvt.nl/ws/oai', #?metadataPrefix=oai_dc', 
                   'pdf': 'identifier',
                   'follow': 'direct',

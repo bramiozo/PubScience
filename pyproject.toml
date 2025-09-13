@@ -47,6 +47,7 @@ scikit-learn = "^1.6.0"
 spacy = "^3.8.3"
 polars = "^1.19.0"
 unsloth = "^2025.8.1"
+pypdf = "^6.0.0"
 
 [build-system]
 requires = ["poetry-core"]
