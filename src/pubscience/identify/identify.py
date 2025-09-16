@@ -25,7 +25,7 @@ class Identify:
         model_threshold: float=0.5, model_outcome: bool=True, device: str|int='cuda', id_col: str|None='id', text_col: str|None='text', textfile_readlines: bool=False, file_splitter_regex: str|None=None,
         max_write_size: int|None=None, max_read_size: int=512*1024, max_chunk_length: int=256,
         write_interval: int=1024, batch_size: int=64, output_file: str='./output/output.jsonl',
-        streaming: bool=False, min_length: int=64, start_from_previous: bool=True):
+        streaming: bool=False, min_length: int=64, start_from_previous: bool=True, greedy: bool=False):
         """
         Initialize the Identify class for identifying relevant documents.
 
@@ -74,6 +74,7 @@ class Identify:
         self.batch_size = batch_size
         self.write_interval = write_interval
         self.min_length = min_length
+        self.greedy = greedy
 
         # if output file already exists, collect a set with the id's based on the self.id_col
         self.existing_ids = set()
@@ -154,7 +155,10 @@ class Identify:
             return term_relevant
 
         model_relevant = self._model_inclusion(text)
-        return term_relevant or model_relevant
+        if self.greedy:
+            return term_relevant or model_relevant
+        else:
+            return term_relevant and model_relevant
 
     def is_relevant_batch(self, texts: List[str])->List[bool]:
         # Determine if a text is relevant based on terms and/or model
@@ -165,7 +169,10 @@ class Identify:
             return term_relevant
 
         model_relevant = self._model_inclusion_batch(texts)
-        return [(t[0]==True) or (t[1]==True) for t in zip(term_relevant, model_relevant)]
+        if self.greedy:
+            return [(t[0]==True) or (t[1]==True) for t in zip(term_relevant, model_relevant)]
+        else:
+            return [(t[0]==True) and (t[1]==True) for t in zip(term_relevant, model_relevant)]
 
     def parse_directory(self, directory_path):
         """Parse the directory and identify relevant files"""
@@ -497,13 +504,17 @@ if __name__ == "__main__":
     parser.add_argument("--output", help="Output file path")
     parser.add_argument("--model", help="Name of the HF model..")
     parser.add_argument("--min_length", default=32, help="Minimum number of words of document..")
+    parser.add_argument("--model_threshold", default=0.5, help="Minimum model proba for positive..")
     parser.add_argument("--streaming", action="store_true", help="Enable streaming mode")
+    parser.add_argument("--greedy", action="store_true", help="Enable greedy mode")
     args = parser.parse_args()
 
     identifier = Identify(output_file=args.output,
                           streaming=args.streaming,
                           model_path=args.model,
-                          min_length=args.min_length)
+                          min_length=args.min_length,
+                          model_threshold=args.model_threshold,
+                          greedy=args.greedys)
 
     if args.directory:
         print("Parsing directory...")

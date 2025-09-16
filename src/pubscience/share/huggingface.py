@@ -5,6 +5,11 @@ from requests.exceptions import HTTPError
 from huggingface_hub import add_collection_item, get_collection
 import os
 from typing import Optional
+import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
+import json
+from tqdm import tqdm
 
 import config
 
@@ -12,6 +17,28 @@ import config
 # python hf_dataset.py --organization "DT4H" --name "Example dataset"\
 # --dataset_path data --name example_api --description 'This is an example dataset'\
 #  --language es --license mit --token YOUR_TOKEN
+def jsonl_to_parquet_iterative(jsonl_path, parquet_path, chunk_size=32_000):
+    writer = None
+    rows = []
+    with open(jsonl_path, 'r') as f:
+        for i, line in tqdm(enumerate(f)):
+            rows.append(json.loads(line))
+            if (i + 1) % chunk_size == 0:
+                df = pd.DataFrame(rows)
+                table = pa.Table.from_pandas(df)
+                if writer is None:
+                    writer = pq.ParquetWriter(parquet_path, table.schema)
+                writer.write_table(table)
+                rows = []
+        # Write any remaining rows
+        if rows:
+            df = pd.DataFrame(rows)
+            table = pa.Table.from_pandas(df)
+            if writer is None:
+                writer = pq.ParquetWriter(parquet_path, table.schema)
+            writer.write_table(table)
+    if writer is not None:
+        writer.close()
 
 def create_dataset_card(name, description, language, license, tags):
     """
@@ -23,7 +50,7 @@ def create_dataset_card(name, description, language, license, tags):
 
     return card
 
-def push_to_huggingface(repo_id, dataset_path, card, token, private):
+def push_to_huggingface(repo_id, dataset_path, card, token, private, iterative=False):
     api = HfApi(token=token)
     print(f"Attempting to push to Repository {repo_id}. \nRepo type {config.repo_type}\n Token {token}")
     try:
@@ -45,6 +72,16 @@ def push_to_huggingface(repo_id, dataset_path, card, token, private):
     if dataset_path.endswith(".jsonl") | dataset_path.endswith(".json"):
         file_path = dataset_path
         dataset_path = os.path.dirname(dataset_path)
+
+        # first transform to Parquet file
+        if iterative==False:
+            df = pd.read_json(file_path, lines=True)
+            file_path = file_path.replace(".jsonl", ".parquet").replace(".json", ".parquet")
+            df.to_parquet(file_path)
+        else:
+            new_file_path = file_path.replace(".jsonl", ".parquet").replace(".json", ".parquet")
+            jsonl_to_parquet_iterative(file_path, new_file_path)
+
         api.upload_file(
             path_or_fileobj=file_path,
             path_in_repo=os.path.relpath(file_path, dataset_path),
@@ -95,7 +132,7 @@ def main():
     parser.add_argument("--token", required=True, help="Hugging Face API token")
     parser.add_argument("--license", default="mit", choices=config.licenses, help="License of the dataset")
     parser.add_argument("--tags", nargs="+", default=[], help="Tags for the dataset")
-
+    parser.add_argument("--iterative", action="store_true", help="Push dataset files iteratively")
     args = parser.parse_args()
 
     repo_id = args.name.replace(" ", "_").lower()
@@ -105,7 +142,7 @@ def main():
     card = create_dataset_card(args.name, args.description, args.language, args.license, args.tags)
 
     # Push dataset and card to Hugging Face
-    push_to_huggingface(repo_id, args.dataset_path, card, args.token, private=args.private)
+    push_to_huggingface(repo_id, args.dataset_path, card, args.token, private=args.private, iterative=args.iterative)
 
     # Add dataset to collection
     collection_id = f"{args.collection_organization}/{config.collections[args.language]}"
