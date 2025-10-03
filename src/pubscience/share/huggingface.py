@@ -4,7 +4,7 @@ from huggingface_hub import HfApi, DatasetCard, errors
 from requests.exceptions import HTTPError
 from huggingface_hub import add_collection_item, get_collection
 import os
-from typing import Optional
+from typing import Optional, Dict
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -13,16 +13,31 @@ from tqdm import tqdm
 
 import config
 
+
 # Example usage:
 # python hf_dataset.py --organization "DT4H" --name "Example dataset"\
 # --dataset_path data --name example_api --description 'This is an example dataset'\
 #  --language es --license mit --token YOUR_TOKEN
 def jsonl_to_parquet_iterative(jsonl_path, parquet_path, chunk_size=32_000):
+    def flatten_dict(nested_dict: Dict) -> Dict:
+        """
+        dictionary has nested structured, flatten it using keys as prefix
+        """
+        flattened_dict = {}
+        for key, value in nested_dict.items():
+            if isinstance(value, dict):
+                for sub_key, sub_value in flatten_dict(value).items():
+                    flattened_dict[f"{key}_{sub_key}"] = sub_value
+            else:
+                flattened_dict[key] = value
+        return flattened_dict
+
     writer = None
     rows = []
-    with open(jsonl_path, 'r') as f:
+    with open(jsonl_path, "r") as f:
         for i, line in tqdm(enumerate(f)):
-            rows.append(json.loads(line))
+            flattened_dict = flatten_dict(json.loads(line))
+            rows.append(flattened_dict)
             if (i + 1) % chunk_size == 0:
                 df = pd.DataFrame(rows)
                 table = pa.Table.from_pandas(df)
@@ -40,6 +55,7 @@ def jsonl_to_parquet_iterative(jsonl_path, parquet_path, chunk_size=32_000):
     if writer is not None:
         writer.close()
 
+
 def create_dataset_card(name, description, language, license, tags):
     """
     Gets main information and creates a dataset card using the template in config.py
@@ -50,18 +66,28 @@ def create_dataset_card(name, description, language, license, tags):
 
     return card
 
+
 def push_to_huggingface(repo_id, dataset_path, card, token, private, iterative=False):
     api = HfApi(token=token)
-    print(f"Attempting to push to Repository {repo_id}. \nRepo type {config.repo_type}\n Token {token}")
+    print(
+        f"Attempting to push to Repository {repo_id}. \nRepo type {config.repo_type}\n Token {token}"
+    )
     try:
         # Check if repository exists by trying to fetch its info
-        api.repo_info(repo_id=repo_id, repo_type=config.repo_type)  # You can adjust repo_type if it's a dataset or space
+        api.repo_info(
+            repo_id=repo_id, repo_type=config.repo_type
+        )  # You can adjust repo_type if it's a dataset or space
         print(f"Repository '{repo_id}' already exists.")
     except HTTPError as e:
         if e.response.status_code == 404:
             # If repository does not exist, create it
             print(f"Repository '{repo_id}' does not exist. Creating...")
-            api.create_repo(token=token, repo_id=repo_id, private=private, repo_type=config.repo_type)
+            api.create_repo(
+                token=token,
+                repo_id=repo_id,
+                private=private,
+                repo_type=config.repo_type,
+            )
         else:
             if e.response.status_code == 409:
                 print(f"Repository '{repo_id}' already exists. Continuing")
@@ -74,13 +100,18 @@ def push_to_huggingface(repo_id, dataset_path, card, token, private, iterative=F
         dataset_path = os.path.dirname(dataset_path)
 
         # first transform to Parquet file
-        if iterative==False:
+        if iterative == False:
             df = pd.read_json(file_path, lines=True)
-            file_path = file_path.replace(".jsonl", ".parquet").replace(".json", ".parquet")
+            file_path = file_path.replace(".jsonl", ".parquet").replace(
+                ".json", ".parquet"
+            )
             df.to_parquet(file_path)
         else:
-            new_file_path = file_path.replace(".jsonl", ".parquet").replace(".json", ".parquet")
+            new_file_path = file_path.replace(".jsonl", ".parquet").replace(
+                ".json", ".parquet"
+            )
             jsonl_to_parquet_iterative(file_path, new_file_path)
+            file_path = new_file_path
 
         api.upload_file(
             path_or_fileobj=file_path,
@@ -103,14 +134,15 @@ def push_to_huggingface(repo_id, dataset_path, card, token, private, iterative=F
 
     # Push dataset card
     card.push_to_hub(
-                        repo_id,
-                        token=token,
-                        repo_type=config.repo_type,
-        )
+        repo_id,
+        token=token,
+        repo_type=config.repo_type,
+    )
+
 
 class HuggingFaceDatasetManager:
     def __init__(self, dataset: Dataset):
-        self.dataset= dataset
+        self.dataset = dataset
 
     def save_to_disk(self, path):
         self.dataset.save_to_disk(path)
@@ -118,36 +150,78 @@ class HuggingFaceDatasetManager:
     def push_to_hub(self, repo_name, token):
         self.dataset.push_to_hub(repo_name, token=token)
 
-def main():
 
-    parser = argparse.ArgumentParser(description="Push dataset and dataset card to Hugging Face")
-    parser.add_argument("--data_organization", default="DT4H", help="Organization to push the dataset to")
-    parser.add_argument("--collection_organization", default="DT4H", help="Organization that owns the collection")
-    parser.add_argument("--private", action="store_true", help="Make the repository private")
+def main():
+    parser = argparse.ArgumentParser(
+        description="Push dataset and dataset card to Hugging Face"
+    )
+    parser.add_argument(
+        "--data_organization",
+        default="DT4H",
+        help="Organization to push the dataset to",
+    )
+    parser.add_argument(
+        "--collection_organization",
+        default="DT4H",
+        help="Organization that owns the collection",
+    )
+    parser.add_argument(
+        "--private", action="store_true", help="Make the repository private"
+    )
     # parser.add_argument("--repo_id", required=True, help="Hugging Face repository ID")
-    parser.add_argument("--dataset_path", required=True, help="Path to the dataset files")
+    parser.add_argument(
+        "--dataset_path", required=True, help="Path to the dataset files"
+    )
     parser.add_argument("--name", required=True, help="Name of the dataset")
-    parser.add_argument("--description", required=True, help="Description of the dataset")
+    parser.add_argument(
+        "--description", required=True, help="Description of the dataset"
+    )
     parser.add_argument("--language", required=True, help="Language of the dataset")
     parser.add_argument("--token", required=True, help="Hugging Face API token")
-    parser.add_argument("--license", default="mit", choices=config.licenses, help="License of the dataset")
+    parser.add_argument(
+        "--license",
+        default="mit",
+        choices=config.licenses,
+        help="License of the dataset",
+    )
     parser.add_argument("--tags", nargs="+", default=[], help="Tags for the dataset")
-    parser.add_argument("--iterative", action="store_true", help="Push dataset files iteratively")
+    parser.add_argument(
+        "--iterative", action="store_true", help="Push dataset files iteratively"
+    )
     args = parser.parse_args()
 
     repo_id = args.name.replace(" ", "_").lower()
-    repo_id = f"{args.data_organization}/{repo_id}" if args.data_organization else repo_id
+    repo_id = (
+        f"{args.data_organization}/{repo_id}" if args.data_organization else repo_id
+    )
 
     # Create dataset card
-    card = create_dataset_card(args.name, args.description, args.language, args.license, args.tags)
+    card = create_dataset_card(
+        args.name, args.description, args.language, args.license, args.tags
+    )
 
     # Push dataset and card to Hugging Face
-    push_to_huggingface(repo_id, args.dataset_path, card, args.token, private=args.private, iterative=args.iterative)
+    push_to_huggingface(
+        repo_id,
+        args.dataset_path,
+        card,
+        args.token,
+        private=args.private,
+        iterative=args.iterative,
+    )
 
     # Add dataset to collection
-    collection_id = f"{args.collection_organization}/{config.collections[args.language]}"
+    collection_id = (
+        f"{args.collection_organization}/{config.collections[args.language]}"
+    )
     print(f"Adding to collection {collection_id}")
-    add_collection_item(collection_id, item_id=repo_id, item_type=config.repo_type, token=args.token, exists_ok=True)
+    add_collection_item(
+        collection_id,
+        item_id=repo_id,
+        item_type=config.repo_type,
+        token=args.token,
+        exists_ok=True,
+    )
 
     if config.repo_type == "dataset":
         repo_url = f"https://huggingface.co/datasets/{repo_id}"
@@ -155,6 +229,7 @@ def main():
 
         print(f"Dataset and card successfully pushed to {repo_url}")
         print(f"Dataset successfully added to {coll_url}")
+
 
 if __name__ == "__main__":
     main()
