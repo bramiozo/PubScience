@@ -24,6 +24,38 @@ inclusion_terms:
   - inflammatie
   - weefselonderzoek
   - medicamenteus
+  - oncologie
+  - ziekte
+  - diabetes
+  - metastase
+  - carcinoom
+  - toxicologie
+  - genetisch
+  - pathologisch
+  - pathologie
+  - neurodegeneratie
+  - NSTEMI
+  - STEMI
+  - hypertensie
+  - tumor
+  - ontstekingsremmer
+  - prednison
+  - prednisolon
+  - proteoom
+  - proteine
+  - immunologie
+  - psychiatrisch
+  - patologisch
+  - ontstekking
+  - invasief
+  - obesitas
+  - artritis
+  - artrose
+  - chondrocalcinose
+  - chronisch
+  - prothese
+  - medicijnen
+  - inhalatie
 exclusion_terms:
   [
     "feesten",
@@ -32,8 +64,13 @@ exclusion_terms:
     "auto",
     "vrolijk",
     "leuk ",
+    "lekker ",
+    "heerlijk",
     "commercieel",
     "marketing",
+    "webshop",
+    "webwinkel",
+    "aanbieding",
     "winst",
     "liefde",
     "wrok",
