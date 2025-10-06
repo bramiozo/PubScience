@@ -33,7 +33,6 @@ transformers = "^4.45.1"
 zstandard = "^0.23.0"
 pyreadstat = "^1.2.8"
 sas7bdat = "^2.2.3"
-ell-ai = "^0.0.14"
 lxml = "^5.3.0"
 pysbd = "^0.3.4"
 bitsandbytes = "^0.45.0"
@@ -52,7 +51,7 @@ umap-learn = "^0.5.9.post2"
 pdfplumber = "^0.11.7"
 paddleocr = "^3.2.0"
 pdf2image = "^1.17.0"
-dots-ocr = { git = "https://github.com/rednote-hilab/dots.ocr.git", branch="master"}
+langdetect = "^1.0.9"
 
 [build-system]
 requires = ["poetry-core"]
