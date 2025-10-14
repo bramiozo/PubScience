@@ -8,6 +8,7 @@ from pydantic import BaseModel
 import os
 import re
 from anthropic.resources import Messages
+from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from dotenv import load_dotenv
 import benedict
 
@@ -20,8 +21,10 @@ from google.genai.types import (
 )
 from anthropic import Client as anthropic_client
 from openai import Client as openai_client
+from openai import AzureOpenAI
 from openai import NotFoundError as openai_NotFoundError
 from openai import RateLimitError as openai_RateLimitError
+
 from groq import Groq
 
 from typing import Optional, Dict, List, Any, Literal, Union
@@ -35,6 +38,10 @@ from tqdm import tqdm
 import argparse
 import torch
 
+# add logger
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # TODO: add support for bulk translations, using async methods.
 # TODO: add option for vLLM and ollama
@@ -189,7 +196,19 @@ class extract():
                 raise ValueError(f"Could not parse provider from yaml: {e}. Please identify an available provider.")
 
         if provider == 'openai':
-            self.client = openai_client(api_key=os.getenv('OPENAI_LLM_API_KEY'))
+            if 'azure' in os.getenv('OPENAI_LLM_API_BASE').lower():
+                # Using Azure OpenAI
+                logger.info("Using Azure OpenAI with DefaultAzureCredential")
+                token_credential = DefaultAzureCredential()
+                token_provider = get_bearer_token_provider(token_credential, "https://cognitiveservices.azure.com/.default",)
+                self.client = AzureOpenAI(azure_endpoint=os.getenv('OPENAI_LLM_API_BASE'), 
+                                          api_version=os.getenv('OPENAI_LLM_API_VERSION', '2025-01-01'),
+                                          azure_ad_token_provider=token_provider)
+            else:
+                self.client = openai_client(api_key=os.getenv('OPENAI_LLM_API_KEY'), 
+                                            base_url=os.getenv('OPENAI_LLM_API_BASE'))
+                                            # api_type='azure', 
+                                            # api_version='2025-06-01')
         elif provider == 'anthropic':
             self.client = anthropic_client(api_key=os.getenv('ANTHROPIC_LLM_API_KEY'))
         elif provider == 'google':
@@ -424,6 +443,8 @@ class extract():
             raise ValueError(f"Model {self.model} not found. {e}. Allowable models are: {self.client.models.list()}")
         except openai_RateLimitError as e:
             raise ValueError(f"Rate limit reached. {e}")
+        except Exception as e:
+            raise ValueError(f"Some other issue: {e}")
 
         choice = response.choices[0]
         logprob = None

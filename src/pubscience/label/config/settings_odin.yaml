@@ -15,10 +15,10 @@ transformation:
   method:
     llm:
       #endpoint: https://api.openai.com/v1/chat/completions #https://gemini.googleapis.com/v1/chat/completions
-      provider: local #google
-      model: unsloth/gemma-3-1b-it-GGUF #models/gemini-1.5-flash
-      max_tokens: 4096
-      system_prompt: "You are a faithful and truthful Dutch label extractor in the cardio/geriatrics domain. "
+      provider: openai #google
+      model: gpt-5 #unsloth/gemma-3-1b-it-GGUF #models/gemini-1.5-flash
+      max_tokens: 8192
+      system_prompt: "You are a faithful and truthful Dutch label extractor in the cardio/geriatrics domain. You are an expert in cardiovascular risk management. You assign people to the cardiovascular risk management regime based on the Dutch guidelines."
     ntm:
       model: nllb200
     out_per_instruction: True

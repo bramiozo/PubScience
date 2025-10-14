@@ -17,8 +17,8 @@ transformation:
     llm:
       endpoint: https://api.openai.com/v1/chat/completions #https://gemini.googleapis.com/v1/chat/completions
       provider: openai #google
-      model: gpt-4o #models/gemini-1.5-flash
-      max_tokens: 256
+      model: gpt-5 #models/gemini-1.5-flash
+      max_tokens: 5048
       system_prompt: "You are a faithful and truthful extractor of information."
     ntm:
       model: nllb200
