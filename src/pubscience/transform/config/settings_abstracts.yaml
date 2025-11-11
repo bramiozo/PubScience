@@ -11,13 +11,13 @@ cleaning:
   write_mode: w
 transformation:
   instructions:
-    - "Rewrite this text and structure it as a discharge summary"
+    - "Extend the biomedical paper abstract with a short consideration of alternative approaches, assumptions and hypotheses."
     - "Translate the text from English to Dutch"
   method:
     llm:
       provider: openai #google
-      model: gpt-4o #models/gemini-1.5-flash
-      max_tokens: 4096
+      model: gpt-5-mini #models/gemini-1.5-flash
+      max_tokens: 1024
       system_prompt: "You are a faithful and truthful translator/paraphraser in the medical/clinical domain. The user query is formatted as a dictionary {'instruction':...,  'text_to_transform':..}, your response should ONLY consist of your transformation, without the dictionary structure."
     ntm:
       model: nllb200
