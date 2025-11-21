@@ -5,6 +5,8 @@ from pathlib import Path
 import json
 import random
 import time
+import pandas as pd
+from pandas.core.methods.describe import DataFrame
 from tqdm import tqdm
 from pubscience.label import text
 dotenv.load_dotenv('../.env')
@@ -24,11 +26,13 @@ logger = logging.getLogger(__name__)
 FREEZE_EVERY_N_STEPS = 32
 FREEZE_DURATION = 1
 MIN_TOKEN_COUNT = 16
+ID_COL = 'studyId_0831'
+TEXT_COL = 'text'
 
-JSON_LOC= os.environ.get('odin')
-assert(JSON_LOC is not None), "JSON_LOC is not set"
-JSON_DIR= os.path.dirname(JSON_LOC)
-OUTPUT_LOC = os.path.join(JSON_DIR, 'labeled_texts.jsonl')
+PARQUET_LOC= os.environ.get('odin')
+assert(PARQUET_LOC is not None), "PARQUET_LOC is not set"
+PARQUET_DIR= os.path.dirname(PARQUET_LOC)
+OUTPUT_LOC = os.path.join(PARQUET_DIR, 'labeled_texts.jsonl')
 kwargs = {
     'system_prompt': "",
     'instruction_list': [],
@@ -52,7 +56,7 @@ if os.path.exists(OUTPUT_LOC):
         try:
             d = json.loads(line)
             if d.get('success', False) | d.get('succes', False):
-                k_list.append(k)
+                k_list.append(line[ID_COL])
         except json.JSONDecodeError:
             logger.error(f"Error decoding JSON at line {k}")
             continue
@@ -65,82 +69,75 @@ else:
     k_list = []
 
 
-with open(JSON_LOC, 'r') as f:
-    for k, line in enumerate(tqdm(f)):
-        # every FREEZE_EVERY_N_SECS
+dfjson = pd.read_parquet(PARQUET_LOC)[['']].to_json(lines=True)
+for k, data in enumerate(tqdm(dfjson)):
+    if k in k_list:
+        continue
 
-        if k in k_list:
-            continue
+    if k % FREEZE_EVERY_N_STEPS == 0:
+        time.sleep(FREEZE_DURATION)
 
-        if k % FREEZE_EVERY_N_STEPS == 0:
-            time.sleep(FREEZE_DURATION)
+    input_text = data['text']
+    input_label = data['label']
 
-        data = json.loads(line)
-        input_text = data['text']
-        input_label = data['label']
+    if len(input_text.split())<=MIN_TOKEN_COUNT:
+        continue
 
-        if len(input_text.split())<=MIN_TOKEN_COUNT:
-            continue
-
-        if (input_label == 0):
-            try:
-                raw_output = TextLabeler(input_text)
-                success = True
-            except Exception as e:
-                raw_output = text.LLMOutput(content="FAIL",
-                        logprob=None,
-                        model=kwargs['model'],
-                        provider=kwargs['provider'],
-                        instruction="|".join(TextLabeler.instruction_list),
-                        metadata=None)
-                success = False
-                logger.error(f"Error processing text {input_text}: {e}")
-
-            output = {
-                'k': k,
-                'success': success,
-                'text': input_text,
-                'label': raw_output.content,
-                'assumed_label': input_label,
-                'model': raw_output.model,
-                'instructions': "|".join(TextLabeler.instruction_list),
-                'meta': raw_output.metadata,
-                'proba': np.exp(raw_output.logprob) if isinstance(raw_output, float) else np.nan
-            }
-        else:
-            # in this case we assume 1==1 because we have specifically selected medical texts
-            # at SAMPLE_POS_FREQUENCY rate we do use the LLM to produce an estimate, for gauging
-            # the false negatives
-            rsamp = False
+    if (input_label == 0):
+        try:
+            raw_output = TextLabeler(input_text)
             success = True
-            if random.random() < SAMPLE_POS_FREQUENCY:
-                rsamp = True
-                try:
-                    raw_output = TextLabeler(input_text)
-                    success = True
-                except Exception as e:
-                    raw_output = text.LLMOutput(content="FAIL",
-                            logprob=None,
-                            model=kwargs['model'],
-                            provider=kwargs['provider'],
-                            instruction="|".join(TextLabeler.instruction_list),
-                            metadata=None)
-                    success = False
-                    logger.error(f"Error processing text {input_text}: {e}")
+        except Exception as e:
+            raw_output = text.LLMOutput(content="FAIL",
+                    logprob=None,
+                    model=kwargs['model'],
+                    provider=kwargs['provider'],
+                    instruction="|".join(TextLabeler.instruction_list),
+                    metadata=None)
+            success = False
+            logger.error(f"Error processing text {input_text}: {e}")
 
-            output = {
-                'k': k,
-                'success': success,
-                'text': input_text,
-                'label': input_label if rsamp==False else raw_output.content,
-                'assumed_label': input_label,
-                'model': 'n/a' if rsamp==False else raw_output.model,
-                'instructions': 'n/a' if rsamp==False else raw_output.instruction,
-                'meta': 'n/a' if rsamp==False else raw_output.metadata,
-                'proba': 'n/a'
-            }
+        output = {
+            'k': k,
+            'success': success,
+            'text': input_text,
+            'label': raw_output.content,
+            'assumed_label': input_label,
+            'model': raw_output.model,
+            'instructions': "|".join(TextLabeler.instruction_list),
+            'meta': raw_output.metadata,
+            'proba': np.exp(raw_output.logprob) if isinstance(raw_output, float) else np.nan
+        }
+    else:
+        # in this case we assume 1==1 because we have specifically selected medical texts
+        # at SAMPLE_POS_FREQUENCY rate we do use the LLM to produce an estimate, for gauging
+        # the false negatives
+        success = True
+        try:
+            raw_output = TextLabeler(input_text)
+            success = True
+        except Exception as e:
+            raw_output = text.LLMOutput(content="FAIL",
+                    logprob=None,
+                    model=kwargs['model'],
+                    provider=kwargs['provider'],
+                    instruction="|".join(TextLabeler.instruction_list),
+                    metadata=None)
+            success = False
+            logger.error(f"Error processing text {input_text}: {e}")
 
-        file_write.write(json.dumps(output) + '\n')
+        output = {
+            'k': k,
+            'success': success,
+            'text': input_text,
+            'label': raw_output.content,
+            'model':  raw_output.model,
+            'instructions': raw_output.instruction,
+            'meta': raw_output.metadata,
+            'proba': np.exp(raw_output.logprob) if isinstance(raw_output, float) else np.nan
+        }
+
+    file_write.write(json.dumps(output) + '\n')
 
 file_write.close()
 # write to parquet
