@@ -6,15 +6,20 @@ import json
 import random
 import time
 import pandas as pd
-from pandas.core.methods.describe import DataFrame
 from tqdm import tqdm
+import deduce
 from pubscience.label import text
-dotenv.load_dotenv('../.env')
+
+dotenv.load_dotenv("../.env")
 
 # add logger
 import logging
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# deduce class
+deducer = deduce.Deduce()
 
 # parse jsonl with labeling tool
 # JSONL {"text": abc, "label": 0}
@@ -26,36 +31,37 @@ logger = logging.getLogger(__name__)
 FREEZE_EVERY_N_STEPS = 32
 FREEZE_DURATION = 1
 MIN_TOKEN_COUNT = 16
-ID_COL = 'studyId_0831'
-TEXT_COL = 'text'
+ID_COL = "studyId_0831"
+TEXT_COL = "consult"
+LABEL_COL = "label"
 
-PARQUET_LOC= os.environ.get('odin')
-assert(PARQUET_LOC is not None), "PARQUET_LOC is not set"
-PARQUET_DIR= os.path.dirname(PARQUET_LOC)
-OUTPUT_LOC = os.path.join(PARQUET_DIR, 'labeled_texts.jsonl')
+PARQUET_LOC = os.environ.get("ODIN")
+assert PARQUET_LOC is not None, "PARQUET_LOC is not set"
+PARQUET_DIR = os.path.dirname(PARQUET_LOC)
+OUTPUT_LOC = os.path.join(PARQUET_DIR, "labeled_texts.jsonl")
 kwargs = {
-    'system_prompt': "",
-    'instruction_list': [],
-    'provider': 'openai',
-    'model': 'gpt-4o-mini',
-    'temperature': 0.,
-    'batch_size': 16,
-    'max_tokens': 5000,
-    'env_loc': '../.run_label.env'
+    "system_prompt": "",
+    "instruction_list": [],
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "temperature": 0.0,
+    "batch_size": 16,
+    "max_tokens": 5000,
+    "env_loc": "../.run_label.env",
 }
-SAMPLE_POS_FREQUENCY=0.1
+SAMPLE_POS_FREQUENCY = 0.1
 TextLabeler = text.extract(**kwargs)
 
 # check if OUTPUT_LOC already exists
 if os.path.exists(OUTPUT_LOC):
     logger.info(f"Output file {OUTPUT_LOC} already exists")
-    file_write = open(OUTPUT_LOC, 'a', encoding='utf-8')
-    file_write_read = open(OUTPUT_LOC, 'r', encoding='utf-8')
+    file_write = open(OUTPUT_LOC, "a", encoding="utf-8")
+    file_write_read = open(OUTPUT_LOC, "r", encoding="utf-8")
     k_list = []
     for k, line in tqdm(enumerate(file_write_read)):
         try:
             d = json.loads(line)
-            if d.get('success', False) | d.get('succes', False):
+            if d.get("success", False) | d.get("succes", False):
                 k_list.append(line[ID_COL])
         except json.JSONDecodeError:
             logger.error(f"Error decoding JSON at line {k}")
@@ -65,11 +71,11 @@ if os.path.exists(OUTPUT_LOC):
     logger.info(f"Found {len(k_list)} labeled texts")
 else:
     logger.info(f"Output file {OUTPUT_LOC} does not exist")
-    file_write = open(OUTPUT_LOC, 'w', encoding='utf-8')
+    file_write = open(OUTPUT_LOC, "w", encoding="utf-8")
     k_list = []
 
-
-dfjson = pd.read_parquet(PARQUET_LOC)[['']].to_json(lines=True)
+df = pd.read_parquet(PARQUET_LOC)
+dfjson = df[[ID_COL, TEXT_COL, LABEL_COL]].to_dict(orient="records")
 for k, data in enumerate(tqdm(dfjson)):
     if k in k_list:
         continue
@@ -77,70 +83,50 @@ for k, data in enumerate(tqdm(dfjson)):
     if k % FREEZE_EVERY_N_STEPS == 0:
         time.sleep(FREEZE_DURATION)
 
-    input_text = data['text']
-    input_label = data['label']
+    input_text = data[TEXT_COL]
+    input_label = data[LABEL_COL]
 
-    if len(input_text.split())<=MIN_TOKEN_COUNT:
+    # deduce de-identification
+    #
+    deid_input_text = deducer.deidentify(input_text)
+
+    if len(input_text.split()) <= MIN_TOKEN_COUNT:
         continue
 
-    if (input_label == 0):
-        try:
-            raw_output = TextLabeler(input_text)
-            success = True
-        except Exception as e:
-            raw_output = text.LLMOutput(content="FAIL",
-                    logprob=None,
-                    model=kwargs['model'],
-                    provider=kwargs['provider'],
-                    instruction="|".join(TextLabeler.instruction_list),
-                    metadata=None)
-            success = False
-            logger.error(f"Error processing text {input_text}: {e}")
-
-        output = {
-            'k': k,
-            'success': success,
-            'text': input_text,
-            'label': raw_output.content,
-            'assumed_label': input_label,
-            'model': raw_output.model,
-            'instructions': "|".join(TextLabeler.instruction_list),
-            'meta': raw_output.metadata,
-            'proba': np.exp(raw_output.logprob) if isinstance(raw_output, float) else np.nan
-        }
-    else:
-        # in this case we assume 1==1 because we have specifically selected medical texts
-        # at SAMPLE_POS_FREQUENCY rate we do use the LLM to produce an estimate, for gauging
-        # the false negatives
+    try:
+        raw_output = TextLabeler(deid_input_text.deidentified_text)
         success = True
-        try:
-            raw_output = TextLabeler(input_text)
-            success = True
-        except Exception as e:
-            raw_output = text.LLMOutput(content="FAIL",
-                    logprob=None,
-                    model=kwargs['model'],
-                    provider=kwargs['provider'],
-                    instruction="|".join(TextLabeler.instruction_list),
-                    metadata=None)
-            success = False
-            logger.error(f"Error processing text {input_text}: {e}")
+    except Exception as e:
+        raw_output = text.LLMOutput(
+            content="FAIL",
+            logprob=None,
+            model=kwargs["model"],
+            provider=kwargs["provider"],
+            instruction="|".join(TextLabeler.instruction_list),
+            metadata=None,
+        )
+        success = False
+        logger.error(f"Error processing text {input_text}: {e}")
 
-        output = {
-            'k': k,
-            'success': success,
-            'text': input_text,
-            'label': raw_output.content,
-            'model':  raw_output.model,
-            'instructions': raw_output.instruction,
-            'meta': raw_output.metadata,
-            'proba': np.exp(raw_output.logprob) if isinstance(raw_output, float) else np.nan
-        }
+    output = {
+        "k": k,
+        "success": success,
+        "text": input_text,
+        "inferred_label": raw_output.content,
+        "coded_label": input_label,
+        "model": raw_output.model,
+        "instructions": "|".join(TextLabeler.instruction_list),
+        "meta": raw_output.metadata,
+        "proba": np.exp(raw_output.logprob)
+        if isinstance(raw_output, float)
+        else np.nan,
+    }
 
-    file_write.write(json.dumps(output) + '\n')
+    file_write.write(json.dumps(output) + "\n")
 
 file_write.close()
 # write to parquet
 import pandas as pd
+
 df = pd.read_json(OUTPUT_LOC, lines=True)
-df.to_parquet(os.path.join(JSON_DIR, 'labeled_texts.parquet'))
+df.to_parquet(os.path.join(JSON_DIR, "labeled_texts.parquet"))
