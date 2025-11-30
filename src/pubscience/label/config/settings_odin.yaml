@@ -11,12 +11,13 @@ cleaning:
   write_mode: w
 transformation:
   instructions:
-    - "We want to know whether the patient, based on this Dutch medical consult text, is eligible for the cardiovascular risk management regime. Only respond with yes / no ."
+    - "Translate this Dutch geriatrics consult to English."
+    - "We want to know whether the patient, based on this medical consult text, has an elevated risk for cardiovascular disease. Only respond with yes / no ."
   method:
     llm:
       #endpoint: https://api.openai.com/v1/chat/completions #https://gemini.googleapis.com/v1/chat/completions
       provider: openai #google
-      model: gpt-5 #unsloth/gemma-3-1b-it-GGUF #models/gemini-1.5-flash
+      model: gpt-4o-mini #unsloth/gemma-3-1b-it-GGUF #models/gemini-1.5-flash
       max_tokens: 8192
       system_prompt: "You are a faithful and truthful Dutch label extractor in the cardio/geriatrics domain. You are an expert in cardiovascular risk management. You assign people to the cardiovascular risk management regime based on the Dutch guidelines."
     ntm:

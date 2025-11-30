@@ -9,6 +9,7 @@ import pandas as pd
 from tqdm import tqdm
 import deduce
 from pubscience.label import text
+from numpy import float32
 
 dotenv.load_dotenv("../.env")
 
@@ -34,6 +35,8 @@ MIN_TOKEN_COUNT = 16
 ID_COL = "studyId_0831"
 TEXT_COL = "consult"
 LABEL_COL = "label"
+AGE_COL = "age"
+GENDER_COL = "gender"
 
 PARQUET_LOC = os.environ.get("ODIN")
 assert PARQUET_LOC is not None, "PARQUET_LOC is not set"
@@ -46,7 +49,7 @@ kwargs = {
     "model": "gpt-4o-mini",
     "temperature": 0.0,
     "batch_size": 16,
-    "max_tokens": 5000,
+    "max_tokens": 8000,
     "env_loc": "../.run_label.env",
 }
 SAMPLE_POS_FREQUENCY = 0.1
@@ -62,7 +65,7 @@ if os.path.exists(OUTPUT_LOC):
         try:
             d = json.loads(line)
             if d.get("success", False) | d.get("succes", False):
-                k_list.append(line[ID_COL])
+                k_list.append(line["id"])
         except json.JSONDecodeError:
             logger.error(f"Error decoding JSON at line {k}")
             continue
@@ -75,7 +78,9 @@ else:
     k_list = []
 
 df = pd.read_parquet(PARQUET_LOC)
-dfjson = df[[ID_COL, TEXT_COL, LABEL_COL]].to_dict(orient="records")
+dfjson = df[[ID_COL, TEXT_COL, LABEL_COL, AGE_COL, GENDER_COL]].to_dict(
+    orient="records"
+)
 for k, data in enumerate(tqdm(dfjson)):
     if k in k_list:
         continue
@@ -85,16 +90,23 @@ for k, data in enumerate(tqdm(dfjson)):
 
     input_text = data[TEXT_COL]
     input_label = data[LABEL_COL]
+    patient_id = data[ID_COL]
+    age = data[AGE_COL]
+    gender = "mannelijk" if data[GENDER_COL] == 1 else "vrouwelijk"
 
     # deduce de-identification
     #
-    deid_input_text = deducer.deidentify(input_text)
+    deid_input_text = deducer.deidentify(input_text).deidentified_text
+
+    # added age and gender
+    #
+    text = f"Consult tekst\n, Patient age: {str(age)}, Patient gender: {gender}.\n\n{deid_input_text}"
 
     if len(input_text.split()) <= MIN_TOKEN_COUNT:
         continue
 
     try:
-        raw_output = TextLabeler(deid_input_text.deidentified_text)
+        raw_output = TextLabeler(text)
         success = True
     except Exception as e:
         raw_output = text.LLMOutput(
@@ -106,20 +118,22 @@ for k, data in enumerate(tqdm(dfjson)):
             metadata=None,
         )
         success = False
-        logger.error(f"Error processing text {input_text}: {e}")
+        logger.error(f"Error processing text {text}: {e}")
 
     output = {
         "k": k,
+        "id": patient_id,
         "success": success,
-        "text": input_text,
+        "text": text,
         "inferred_label": raw_output.content,
         "coded_label": input_label,
         "model": raw_output.model,
         "instructions": "|".join(TextLabeler.instruction_list),
         "meta": raw_output.metadata,
         "proba": np.exp(raw_output.logprob)
-        if isinstance(raw_output, float)
+        if isinstance(raw_output, float32)
         else np.nan,
+        "logprob": raw_output.logprob,
     }
 
     file_write.write(json.dumps(output) + "\n")
@@ -129,4 +143,4 @@ file_write.close()
 import pandas as pd
 
 df = pd.read_json(OUTPUT_LOC, lines=True)
-df.to_parquet(os.path.join(JSON_DIR, "labeled_texts.parquet"))
+df.to_parquet(os.path.join(PARQUET_DIR, "labeled_texts.parquet"))

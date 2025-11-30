@@ -740,7 +740,7 @@ def parse_jsonl(arguments: argparse.Namespace):
             id_cache = [d[arguments.id_field] for d in list_of_dicts]
     except Exception as e:
         id_cache = []
-        print(f"First run for this input file, continuing with {out_path}. Errpr: {e}")
+        print(f"First run for this input file, continuing with {out_path}. Error: {e}")
 
     with open(arguments.input_path, "r", encoding="utf-8") as f:
         list_of_dicts = [json.loads(d) for d in f.readlines()]
