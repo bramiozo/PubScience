@@ -14,16 +14,15 @@ from tqdm import tqdm
 from pubscience.translate import llm
 
 dotenv.load_dotenv("../../.env")
-json_input = os.getenv("MEDQA")
+json_input = os.getenv("BIOASQ")
 json_name = Path(json_input).stem
 
-OUTPUT_LOC = os.getenv("MEDQA_output")
+OUTPUT_LOC = os.getenv("BIOASQ_output")
 BATCH_SIZE = 8
-QUESTION_ID = "question"
-ANSWER_ID = "answer"
-OPTIONS_ID = "options"
-META_IDS = ["meta_id"]
-MAX_LENGTH = 10240
+QUESTION_ID = "body"
+ANSWER_ID = "ideal_answer"
+META_IDS = []
+MAX_LENGTH = 4096
 MAX_NUM_LINES = 14_369
 SLEEP = 3
 SYSTEM_PROMPT = "You are a faithful and truthful translator in the medical/clinical domain. The user query is formatted as a dictionary {'source_language':..,'target_language':.., 'text_to_translate':..}, your response should ONLY consist of your translation. IMPORTANT: When you encounter the special marker |SPLIT|, you MUST preserve it EXACTLY as-is in your translation. Do NOT translate this marker. Keep it unchanged in the exact same position."
@@ -35,7 +34,7 @@ vars = {
     "target_lang": "dutch",
     "max_tokens": MAX_LENGTH,
     "system_prompt": SYSTEM_PROMPT,
-    "temperature": 0.25,
+    "temperature": 0.15,
     "env_loc": "../../.run_translate.env",
 }
 
@@ -58,29 +57,24 @@ except:
 print(f"{len(id_cache)} already in dataset")
 
 with open(json_input, "r") as file:
-    list_of_lines = file.readlines()
-    list_of_dicts = [json.loads(line) for line in list_of_lines]
+    list_of_dicts = json.load(file)["questions"]
 
     batch_size = BATCH_SIZE
     batch = []
-    batch_choices = []
     batch_ids = []
     output_list = []
     words_counts = []
     for k, line in tqdm(enumerate(list_of_dicts)):
         if k not in id_cache:
             question_text = line[QUESTION_ID]
-            answer_choice = line[ANSWER_ID]
-            options_dict = line[OPTIONS_ID]
-            options_text = f"The options are: {','.join(options_dict.values())}."
+            answer_text = line[ANSWER_ID][0]
 
-            input_text = f"{question_text}\n{options_text}\n"
-            answer_text = f"The answer is: {options_dict[answer_choice]}"
+            input_text = question_text
+            answer_text = answer_text
 
             text_to_translate = f"{input_text}|SPLIT|{answer_text}"
 
             batch.append(text_to_translate)
-            batch_choices.append(answer_choice)
             batch_ids.append({"id": k})
             words_counts.append(len(text_to_translate.split(" ")))
 
@@ -99,7 +93,7 @@ with open(json_input, "r") as file:
                     if translated_text is not None:
                         components = translated_text.split("|SPLIT|")
                         if len(components) == 2:
-                            d.update({QUESTION_ID: components[0]})
+                            d.update({"question": components[0]})
                             d.update({"answer": components[1]})
                             d.update({f"original_{QUESTION_ID}_answer": batch[i]})
                             d.update({"approx_word_count_original": words_counts[i]})
