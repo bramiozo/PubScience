@@ -46,7 +46,7 @@ kwargs = {
     "system_prompt": "",
     "instruction_list": [],
     "provider": "openai",
-    "model": "gpt-4o-mini",
+    "model": "gpt-4.1-mini",
     "temperature": 0.0,
     "batch_size": 16,
     "max_tokens": 8000,
@@ -92,7 +92,7 @@ for k, data in enumerate(tqdm(dfjson)):
     input_label = data[LABEL_COL]
     patient_id = data[ID_COL]
     age = data[AGE_COL]
-    gender = "mannelijk" if data[GENDER_COL] == 1 else "vrouwelijk"
+    gender = "mannelijk" if data[GENDER_COL] == 0 else "vrouwelijk"
 
     # deduce de-identification
     #
