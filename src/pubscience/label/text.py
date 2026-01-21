@@ -136,7 +136,10 @@ class extract:
         env_loc: str = ".env",
         effort: Literal["low", "medium", "high"] | None = "low",
         verbosity: Literal["low", "medium", "high"] | None = "high",
+        logger: logging.Logger | None = None,
     ):
+        # Use provided logger or fall back to module-level logger
+        self.logger = logger if logger is not None else globals()["logger"]
         assert provider in ["google", "anthropic", "openai", "groq", "local"], (
             f"Provider {provider} not supported. Supported providers are: ['google', 'anthropic', 'openai', 'groq', 'local']"
         )
@@ -241,7 +244,7 @@ class extract:
         if provider == "openai":
             if "azure" in os.getenv("OPENAI_LLM_API_BASE").lower():
                 # Using Azure OpenAI
-                logger.info("Using Azure OpenAI with DefaultAzureCredential")
+                self.logger.info("Using Azure OpenAI with DefaultAzureCredential")
                 token_credential = DefaultAzureCredential()
                 token_provider = get_bearer_token_provider(
                     token_credential,
@@ -415,6 +418,7 @@ class extract:
                 metadata=metadata,
             )
         except Exception as e:
+            self.logger.error(f"Could not transform text with Google LLM: {e}")
             raise ValueError(f"Could not transform text with Google LLM: {e}")
 
     def __transform_anthropic(self, InputText: llm_input) -> LLMOutput:
@@ -507,12 +511,17 @@ class extract:
         #         top_logprobs=1,
         #     )
         except openai_NotFoundError as e:
+            self.logger.error(
+                f"Model {self.model} not found. {e}. Allowable models are: {self.client.models.list()}"
+            )
             raise ValueError(
                 f"Model {self.model} not found. {e}. Allowable models are: {self.client.models.list()}"
             )
         except openai_RateLimitError as e:
+            self.logger.error(f"Rate limit reached. {e}")
             raise ValueError(f"Rate limit reached. {e}")
         except Exception as e:
+            self.logger.error(f"Some other issue: {e}")
             raise ValueError(f"Some other issue: {e}")
 
         choice = response.choices[0]  # output_text.strip()  #

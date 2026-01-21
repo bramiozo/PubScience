@@ -12,14 +12,92 @@ cleaning:
 transformation:
   instructions:
     - "Translate this Dutch geriatrics consult to English."
-    - "We want to know whether the patient, based on this medical consult text, has an elevated risk for cardiovascular disease. Only respond with yes / no ."
+    - "We want to know whether the patient, based on this medical geriatrics consult text, has an elevated risk for cardiovascular disease and should be included in a cardiovascular risk management group. Only respond with yes / no ."
   method:
     llm:
       #endpoint: https://api.openai.com/v1/chat/completions #https://gemini.googleapis.com/v1/chat/completions
       provider: openai #google
       model: gpt-4o-mini #unsloth/gemma-3-1b-it-GGUF #models/gemini-1.5-flash
       max_tokens: 8192
-      system_prompt: "You are a faithful and truthful Dutch label extractor in the cardio/geriatrics domain. You are an expert in cardiovascular risk management. You assign people to the cardiovascular risk management regime based on the Dutch guidelines."
+      system_prompt: |
+        You are a faithful and truthful label extractor in the cardio/geriatrics domain. You are an expert in cardiovascular risk management. You assign people to the cardiovascular risk management regime based on the Dutch guidelines. An excerpt of the guidelines is given as follows;
+        ## Core CVRM factors commonly documented in patient consults
+
+        ### Demographics
+        - Age  
+        - Sex  
+
+        ### Symptoms / Clinical presentation
+        - Chest pain / angina  
+        - Dyspnea  
+        - Palpitations (e.g. atrial fibrillation)  
+        - Neurological deficits / TIA / stroke symptoms  
+        - Claudication (peripheral arterial disease)  
+        - Signs of heart failure  
+
+        ### Prior history (established disease)
+        - Documented atherosclerotic cardiovascular disease  
+          (coronary artery disease, myocardial infarction, stroke/TIA, 
+          peripheral arterial disease, aortic aneurysm)
+        - Diabetes mellitus (type 1 or 2; duration, complications)
+        - Chronic kidney disease (eGFR, albuminuria)
+        - Familial hypercholesterolemia
+        - Atrial fibrillation
+        - Heart failure
+        - Hypertension
+        - Prior revascularization or vascular procedures
+
+        ### Risk factors (anamnestic)
+        - Smoking status (current/former, pack-years)
+        - Family history of premature cardiovascular disease
+        - Diet quality
+        - Physical inactivity / sedentary behavior
+        - Alcohol use
+        - Psychosocial stress, depression, low socioeconomic status
+
+        ### Risk factors (clinical / measurements)
+        - Systolic blood pressure
+        - Body mass index (BMI)
+        - Waist circumference
+
+        ### Laboratory factors
+        - LDL-cholesterol
+        - Non-HDL-cholesterol
+        - Total cholesterol
+        - HDL-cholesterol
+        - Triglycerides
+        - Fasting glucose
+        - Serum creatinine / eGFR
+        - Urine albumin–creatinine ratio
+
+        ### Risk scores
+        - SCORE2 (ages 40–70)
+        - SCORE2-OP (ages 70–90)
+        - SMART2 / SMART-REACH (established cardiovascular disease)
+        - DIAL2 (diabetes mellitus)
+
+        ### Risk modifiers / additional factors
+        - Coronary artery calcium score
+        - Psychosocial factors
+        - Ethnic background
+        - Chronic inflammatory diseases  
+          (rheumatoid arthritis, psoriatic arthritis, ankylosing spondylitis)
+        - COPD
+        - Gout
+        - HIV infection
+        - Inflammatory bowel disease
+        - Obstructive sleep apnea
+        - History of pre-eclampsia or pregnancy-related hypertension
+        - Severe psychiatric disorders
+        - Prior chemo- or radiotherapy
+
+        ### Treatment-related context often noted
+        - Current antihypertensive therapy
+        - Current lipid-lowering therapy (statins, ezetimibe, PCSK9 inhibitors)
+        - Blood pressure target attainment
+        - LDL-C target attainment
+        - Medication adherence
+        - Polypharmacy and frailty (especially in older adults)
     ntm:
       model: nllb200
     out_per_instruction: True
