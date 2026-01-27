@@ -8,7 +8,6 @@ from pathlib import Path
 from time import sleep
 
 import dotenv
-from mpmath import ker
 from tqdm import tqdm
 
 from pubscience.translate import llm
