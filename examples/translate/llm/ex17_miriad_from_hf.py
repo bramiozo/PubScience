@@ -13,6 +13,7 @@ dotenv.load_dotenv("../../.env")
 hf_dataset_name = os.getenv("MIRIAD", "miriad/miriad-4.4M")
 OUTPUT_LOC = os.getenv("MIRIAD_output")
 BATCH_SIZE = 8
+DATA_SIZE = 4.4e6
 IDX_ID = "qa_id"
 QUESTION_ID = "question"
 ANSWER_ID = "answer"
@@ -73,7 +74,7 @@ batch, batch_ids, words_counts = [], [], []
 def process_and_write_batch(batch, batch_samples, words_counts):
     translated_batch = translator.translate_batch(batch)
     output_list = []
-    for i, sample in tqdm(enumerate(batch_samples)):
+    for i, sample in enumerate(batch_samples):
         result = {"id": sample[IDX_ID]}
         # Add meta fields
         for meta_key in META_IDS:
@@ -96,7 +97,7 @@ def process_and_write_batch(batch, batch_samples, words_counts):
 
 batch, batch_samples, words_counts = [], [], []
 
-for sample in hf_dataset:
+for sample in tqdm(hf_dataset, total=DATA_SIZE):
     if sample[IDX_ID] not in id_cache:
         text_to_translate = f"{sample[QUESTION_ID]}|SPLIT|{sample[ANSWER_ID]}"
         batch.append(text_to_translate)
