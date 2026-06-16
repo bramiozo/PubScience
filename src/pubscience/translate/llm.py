@@ -24,6 +24,7 @@ from google.genai.types import (
     SafetySetting,
 )
 from groq import AsyncGroq, Groq
+from openai import APIStatusError as openai_StatusError
 from openai import AsyncOpenAI
 from openai import BadRequestError as openai_BadRequestError
 from openai import Client as openai_client
@@ -481,8 +482,14 @@ class TranslationLLM:
         except openai_BadRequestError as e:
             print(f"Error: {e}")
             return {
-                "translated_text": "NOT TRANSLATED -- see error message",
-                "error_message": f"BadRequest: {str(e)}",
+                "translated_text": None,
+                "error_message": f"BadRequest: {str(e)}, Input text: {str(InputText)}",
+            }
+        except openai_StatusError as e:
+            print(f"Error: {e}")
+            return {
+                "translated_text": None,
+                "error_message": f"Status error: {str(e)}, Input text: {str(InputText)}",
             }
 
         return {"translated_text": response.choices[0].message.content.strip()}
