@@ -18,7 +18,7 @@ IDX_ID = "qa_id"
 QUESTION_ID = "question"
 ANSWER_ID = "answer"
 MAX_LENGTH = 1024
-SLEEP = 2
+SLEEP = 3
 SYSTEM_PROMPT = (
     "You are a faithful and truthful translator in the medical/clinical domain. "
     "The user query is formatted as a dictionary {'source_language':..,'target_language':.., 'text_to_translate':..}, "
@@ -36,7 +36,7 @@ META_IDS = [
 ]
 
 vars = {
-    "model": "gpt-4.1-mini",
+    "model": "gpt-4.1-nano",
     "provider": "openai",
     "source_lang": "english",
     "target_lang": "dutch",
@@ -55,7 +55,8 @@ if OUTPUT_LOC and Path(OUTPUT_LOC).exists():
         for line in input_file:
             try:
                 d = json.loads(line)
-                id_cache.add(d["id"])
+                if d.get("error_message", None) is None:
+                    id_cache.add(d["id"])
             except Exception:
                 continue
 elif OUTPUT_LOC:
@@ -80,13 +81,17 @@ def process_and_write_batch(batch, batch_samples, words_counts):
         for meta_key in META_IDS:
             result[meta_key] = sample.get(meta_key)
         translated_text = translated_batch[i]["translated_text"]
-        if translated_text:
+        if translated_text is not None:
             components = translated_text.split("|SPLIT|")
             result[QUESTION_ID] = components[0]
             result[ANSWER_ID] = components[1] if len(components) > 1 else ""
             result["approx_word_count_original"] = words_counts[i]
             result["approx_word_count_translated"] = len(translated_text.split(" "))
             output_list.append(result)
+        elif (translated_text is None) and (
+            sample.get("error_message", None) is not None
+        ):
+            result["error_message"] = sample["error_message"]
         else:
             print(f"Translation failed for {sample[IDX_ID]}")
     if output_list:
