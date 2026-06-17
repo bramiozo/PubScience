@@ -47,13 +47,13 @@ FREEZE_DURATION = 1
 MIN_TOKEN_COUNT = 16
 ID_COL = "studyId_0888"
 TEXT_COL = "verslagtekst"
-GPT_VERSION = "gpt-4.1"
+GPT_VERSION = "gpt-4.1"  # gpt-5.4-mini gpt-4.1
 
 PARQUET_LOC = os.environ.get("ARGUS")
 assert PARQUET_LOC is not None, "PARQUET_LOC is not set"
 PARQUET_DIR = os.path.dirname(PARQUET_LOC)
 OUTPUT_LOC = os.path.join(
-    PARQUET_DIR, f"{GPT_VERSION}_labeled_texts_single_dutch_v2.parquet"
+    PARQUET_DIR, f"{GPT_VERSION}_labeled_texts_single_dutch_gpt54mini_v3.parquet"
 )
 LOG_LOC = os.path.join(PARQUET_DIR, "label_processing.log")
 
